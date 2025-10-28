@@ -24,12 +24,13 @@ FROM eclipse-temurin:21-jre-alpine
 WORKDIR /usr/app
 
 # Set the environment variable for the port
-# Set the environment variable for the port (Render default)
 ENV PORT 10000
 
+# *** CRITICAL: Ensure this EXPOSE line is present ***
+EXPOSE 10000
+
 # Copy the built JAR file from the 'build' stage
-# CRITICAL: Replace 'DNDapp-1.0-SNAPSHOT.jar' with the actual name of your compiled JAR file
-# CRITICAL: If your JAR name is different from DNDapp-1.0-SNAPSHOT.jar, change it here!
 COPY --from=build /app/target/DNDapp-1.0-SNAPSHOT.jar ./app.jar
 
 # Define the command to run the application
+ENTRYPOINT ["java", "-jar", "app.jar"]
