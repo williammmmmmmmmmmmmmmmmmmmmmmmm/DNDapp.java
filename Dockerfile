@@ -20,6 +20,8 @@ RUN mvn clean install -DskipTests
 # Stage 2: Create a smaller, production-ready image
 FROM eclipse-temurin:21-jre-alpine
 
+FROM eclipse-temurin:21-jre-alpine
+
 # Set the working directory in the final image
 WORKDIR /usr/app
 
