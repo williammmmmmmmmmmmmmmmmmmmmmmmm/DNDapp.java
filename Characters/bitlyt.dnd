@@ -1,0 +1,33 @@
+{
+  "name": "bitlyt",
+  "selectedClass": "Artificer",
+  "selectedSubclass": "Artillerist(TC)",
+  "selectedSpecies": "Fairy",
+  "experience": 0,
+  "abilityScores": {
+    "STR": 15,
+    "DEX": 14,
+    "CON": 13,
+    "INT": 12,
+    "WIS": 10,
+    "CHA": 8
+  },
+  "age": "1",
+  "height": "1",
+  "weight": "1",
+  "hair": "1",
+  "eyes": "1",
+  "skin": "1",
+  "faith": "",
+  "lifestyle": "",
+  "inventory": [
+    {
+      "name": "shaw",
+      "description": ""
+    },
+    {
+      "name": "helm",
+      "description": ""
+    }
+  ]
+}
