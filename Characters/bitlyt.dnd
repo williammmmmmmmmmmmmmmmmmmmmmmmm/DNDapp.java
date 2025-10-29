@@ -20,6 +20,10 @@
   "skin": "1",
   "faith": "",
   "lifestyle": "",
+  "knownSpells": {
+    "0": []
+  },
+  "equippedItems": {},
   "inventory": [
     {
       "name": "shaw",
@@ -27,6 +31,10 @@
     },
     {
       "name": "helm",
+      "description": ""
+    },
+    {
+      "name": "test",
       "description": ""
     }
   ]

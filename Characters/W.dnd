@@ -1,0 +1,29 @@
+{
+  "name": "W",
+  "player": "W",
+  "selectedClass": "Bard",
+  "selectedSubclass": "College of Creation(TC)",
+  "selectedSpecies": "Astral Elf",
+  "background": "Acolyte",
+  "experience": 10000,
+  "abilityScores": {
+    "STR": 15,
+    "DEX": 14,
+    "CON": 13,
+    "INT": 12,
+    "WIS": 10,
+    "CHA": 8
+  },
+  "alignment": "True Neutral",
+  "age": "W",
+  "height": "W",
+  "weight": "W",
+  "hair": "W",
+  "eyes": "W",
+  "skin": "W",
+  "faith": "W",
+  "lifestyle": "W",
+  "knownSpells": {},
+  "equippedItems": {},
+  "inventory": []
+}

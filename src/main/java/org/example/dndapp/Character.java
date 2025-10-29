@@ -27,9 +27,15 @@ public class Character implements Serializable {
     private String skin;
     private String faith;
     private String lifestyle;
-    private Map<Integer, List<String>> knownSpells;
-    private Map<String, Item> equippedItems;
-    private List<Item> inventory;
+
+    // Initialize fields at declaration.
+    private Map<Integer, List<String>> knownSpells = new HashMap<>();
+    private Map<String, Item> equippedItems = new LinkedHashMap<>();
+    private List<Item> inventory = new ArrayList<>();
+
+    // NEW FIELDS for editable sections (using simple List<String> to avoid new classes)
+    private List<String> customActions = new ArrayList<>();
+    private List<String> featuresAndTraits = new ArrayList<>();
 
     public Character(String name, String player, String selectedClass, String selectedSubclass, String selectedSpecies,
                      String background, int experience, Map<String, Integer> abilityScores, String alignment, String age,
@@ -51,13 +57,14 @@ public class Character implements Serializable {
         this.skin = skin;
         this.faith = faith;
         this.lifestyle = lifestyle;
-        this.knownSpells = new HashMap<>();
-        this.equippedItems = new LinkedHashMap<>();
-        this.inventory = new ArrayList<>();
     }
 
+    /**
+     * Special method used during deserialization to ensure all fields are initialized.
+     */
     private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
         in.defaultReadObject();
+        // Null checks for fields that might be missing from old save files
         if (this.knownSpells == null) {
             this.knownSpells = new HashMap<>();
         }
@@ -66,6 +73,13 @@ public class Character implements Serializable {
         }
         if (this.inventory == null) {
             this.inventory = new ArrayList<>();
+        }
+        // Null checks for new list fields
+        if (this.customActions == null) {
+            this.customActions = new ArrayList<>();
+        }
+        if (this.featuresAndTraits == null) {
+            this.featuresAndTraits = new ArrayList<>();
         }
     }
 
@@ -152,7 +166,7 @@ public class Character implements Serializable {
         return getLevel() + classHitDice.getOrDefault(selectedClass, "1d6");
     }
 
-    // New method to equip an item
+    // Methods for equipping/unequipping items (used in CharacterSheetPage)
     public void equipItem(Item item, String slotName) {
         if (equippedItems.containsKey(slotName)) {
             // If the slot is not empty, unequip the old item first
@@ -164,84 +178,65 @@ public class Character implements Serializable {
         inventory.remove(item);
     }
 
-    // Getters
-    public String getName() {
-        return name;
+    public void unequipItem(String slotName) {
+        if (equippedItems.containsKey(slotName)) {
+            Item unequippedItem = equippedItems.remove(slotName);
+            if (unequippedItem != null) {
+                inventory.add(unequippedItem);
+            }
+        }
     }
 
-    public String getPlayer() {
-        return player;
-    }
+    // Getters and SETTERS for editable fields
 
-    public String getSelectedClass() {
-        return selectedClass;
-    }
+    // General Getters (Unchanged)
+    public String getName() { return name; }
+    public String getPlayer() { return player; }
+    public String getSelectedClass() { return selectedClass; }
+    public String getSelectedSubclass() { return selectedSubclass; }
+    public String getSelectedSpecies() { return selectedSpecies; }
+    public String getBackground() { return background; }
+    public Map<Integer, List<String>> getKnownSpells() { return knownSpells; }
+    public Map<String, Item> getEquippedItems() { return equippedItems; }
+    public List<Item> getInventory() { return inventory; }
 
-    public String getSelectedSubclass() {
-        return selectedSubclass;
-    }
+    // Vitals: Experience Getter & Setter
+    public int getExperience() { return experience; }
+    public void setExperience(int experience) { this.experience = experience; }
 
-    public String getSelectedSpecies() {
-        return selectedSpecies;
-    }
+    // Ability Scores: Getter and Updater
+    public Map<String, Integer> getAbilityScores() { return abilityScores; }
+    public void setAbilityScore(String ability, int score) { this.abilityScores.put(ability, score); }
 
-    public String getBackground() {
-        return background;
-    }
+    // Physical & Personal Details: Getters & Setters
+    public String getAlignment() { return alignment; }
+    public void setAlignment(String alignment) { this.alignment = alignment; }
 
-    public int getExperience() {
-        return experience;
-    }
+    public String getAge() { return age; }
+    public void setAge(String age) { this.age = age; }
 
-    public Map<String, Integer> getAbilityScores() {
-        return abilityScores;
-    }
+    public String getHeight() { return height; }
+    public void setHeight(String height) { this.height = height; }
 
-    public String getAlignment() {
-        return alignment;
-    }
+    public String getWeight() { return weight; }
+    public void setWeight(String weight) { this.weight = weight; }
 
-    public String getAge() {
-        return age;
-    }
+    public String getHair() { return hair; }
+    public void setHair(String hair) { this.hair = hair; }
 
-    public String getHeight() {
-        return height;
-    }
+    public String getEyes() { return eyes; }
+    public void setEyes(String eyes) { this.eyes = eyes; }
 
-    public String getWeight() {
-        return weight;
-    }
+    public String getSkin() { return skin; }
+    public void setSkin(String skin) { this.skin = skin; }
 
-    public String getHair() {
-        return hair;
-    }
+    public String getFaith() { return faith; }
+    public void setFaith(String faith) { this.faith = faith; }
 
-    public String getEyes() {
-        return eyes;
-    }
+    public String getLifestyle() { return lifestyle; }
+    public void setLifestyle(String lifestyle) { this.lifestyle = lifestyle; }
 
-    public String getSkin() {
-        return skin;
-    }
-
-    public String getFaith() {
-        return faith;
-    }
-
-    public String getLifestyle() {
-        return lifestyle;
-    }
-
-    public Map<Integer, List<String>> getKnownSpells() {
-        return knownSpells;
-    }
-
-    public Map<String, Item> getEquippedItems() {
-        return equippedItems;
-    }
-
-    public List<Item> getInventory() {
-        return inventory;
-    }
+    // Actions & Features/Traits: Generic List Getters
+    public List<String> getCustomActions() { return customActions; }
+    public List<String> getFeaturesAndTraits() { return featuresAndTraits; }
 }
