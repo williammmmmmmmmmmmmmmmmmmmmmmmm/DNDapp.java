@@ -1,0 +1,77 @@
+{
+  "name": "Mat Pat",
+  "player": "Desmond the gay",
+  "selectedClass": "Bard",
+  "selectedSubclass": "College of Lore(PH)",
+  "selectedSpecies": "Triton",
+  "background": "Urchin",
+  "experience": 355000,
+  "abilityScores": {
+    "STR": 15,
+    "DEX": 14,
+    "CON": 13,
+    "INT": 12,
+    "WIS": 10,
+    "CHA": 8
+  },
+  "alignment": "Chaotic Evil",
+  "age": "69",
+  "height": "69\u0027",
+  "weight": "69kg",
+  "hair": "green",
+  "eyes": "blue",
+  "skin": "pale blue",
+  "faith": "ITS JUST A THEORY",
+  "lifestyle": "Loaded",
+  "knownSpells": {
+    "1": [
+      "Charm Person",
+      "Sleep"
+    ],
+    "2": [
+      "Enthrall",
+      "Hold Person",
+      "Invisibility",
+      "Silence"
+    ],
+    "3": [
+      "Hypnotic Pattern",
+      "Nondetection",
+      "Stinking Cloud"
+    ],
+    "4": [
+      "Greater Invisibility"
+    ],
+    "5": [
+      "Dominate Person",
+      "Modify Memory"
+    ],
+    "6": [
+      "Mass Suggestion",
+      "Otto\u0027s Irresistible Dance"
+    ],
+    "7": [
+      "Forcecage"
+    ],
+    "8": [
+      "Feeblemind",
+      "Dominate Monster",
+      "Power Word Stun",
+      "Glibness"
+    ],
+    "9": [
+      "Power Word Kill",
+      "True Polymorph"
+    ]
+  },
+  "equippedItems": {},
+  "inventory": [
+    {
+      "name": "Chloroform",
+      "description": ""
+    }
+  ],
+  "customActions": [],
+  "featuresAndTraits": [],
+  "currentHitPoints": 123
+}
