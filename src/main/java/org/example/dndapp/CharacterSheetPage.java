@@ -12,6 +12,7 @@ import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
+import javafx.scene.layout.StackPane;
 
 import java.io.File;
 import java.io.IOException;
@@ -145,10 +146,19 @@ public class CharacterSheetPage {
         buttonBox.setAlignment(Pos.CENTER);
         buttonBox.setPadding(new Insets(20, 0, 0, 0));
 
+        // Existing root VBox
         VBox fullRoot = new VBox(scrollPane, buttonBox);
         fullRoot.setFillWidth(true);
 
-        Scene scene = new Scene(fullRoot, 1200, 800);
+        // --- NEW: Floating Die Icon Setup ---
+        FloatingDieIcon dieIcon = new FloatingDieIcon();
+        StackPane.setAlignment(dieIcon, Pos.BOTTOM_RIGHT);
+        StackPane.setMargin(dieIcon, new Insets(20));
+
+        // Wrap the full VBox in a StackPane to allow the icon to float above it
+        StackPane finalRoot = new StackPane(fullRoot, dieIcon);
+
+        Scene scene = new Scene(finalRoot, 1200, 800);
         return scene;
     }
 

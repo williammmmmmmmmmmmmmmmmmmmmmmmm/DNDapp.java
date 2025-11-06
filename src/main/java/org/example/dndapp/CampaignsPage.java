@@ -144,6 +144,13 @@ public class CampaignsPage {
         // Bind UI updates to WebSocketService messages
         webSocketService.setOnMessageReceived(this::handleMessage);
 
+        FloatingDieIcon dieIcon = new FloatingDieIcon();
+        StackPane.setAlignment(dieIcon, Pos.BOTTOM_RIGHT);
+        StackPane.setMargin(dieIcon, new Insets(20));
+
+        // Add the icon to the root StackPane
+        root.getChildren().add(dieIcon);
+
         return new Scene(root);
     }
 

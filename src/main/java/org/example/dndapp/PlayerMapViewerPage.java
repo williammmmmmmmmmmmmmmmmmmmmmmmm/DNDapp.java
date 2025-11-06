@@ -19,6 +19,8 @@ import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
 import javafx.scene.input.MouseButton;
+import javafx.scene.layout.StackPane;
+import javafx.scene.control.ScrollPane;
 
 import java.io.File;
 import java.io.FileReader;
@@ -152,7 +154,18 @@ public class PlayerMapViewerPage {
         scrollPane.setFitToWidth(true);
         scrollPane.setFitToHeight(true);
 
-        Scene scene = new Scene(scrollPane, 900, 800);
+// --- NEW: Floating Die Icon Setup ---
+        FloatingDieIcon dieIcon = new FloatingDieIcon();
+        StackPane.setAlignment(dieIcon, Pos.BOTTOM_RIGHT);
+        StackPane.setMargin(dieIcon, new Insets(20));
+
+        // 2. The ONLY way to make a node float over a scrollable area is to wrap the
+        //    ScrollPane and the icon in a StackPane, which becomes the Scene root.
+        StackPane finalRoot = new StackPane(scrollPane, dieIcon);
+
+        // 3. Create the Scene using the StackPane
+        // This line must use the StackPane to allow the icon to float.
+        Scene scene = new Scene(finalRoot, 900, 800);
         setupMouseEvents();
         setupKeyEvents(scene);
         loadMap();
