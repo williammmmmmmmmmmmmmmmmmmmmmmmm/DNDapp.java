@@ -1,10 +1,10 @@
 package org.example.dndapp;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
+
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.canvas.Canvas;
+import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
@@ -16,19 +16,29 @@ import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
 
 import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.List;
 
 public class MyMapsPage {
 
     private final Stage primaryStage;
     private final Scene previousScene;
-    private final WebSocketService client; // Corrected class name
+    private final WebSocketService client;
     private static final String MY_MAPS_DIRECTORY = "src/main/resources/my-maps";
     private static final double PREVIEW_SIZE = 150;
 
-    public MyMapsPage(Stage primaryStage, Scene previousScene, WebSocketService client) { // Corrected constructor parameter
+    // --- Path Resolution to Downloads/To Send folder ---
+    private static final String TO_SEND_FOLDER_NAME = "To Send";
+    // Find the base Downloads path (e.g., C:\Users\alain\Downloads)
+    private static final Path DOWNLOADS_PATH = Path.of(System.getProperty("user.home"), "Downloads");
+    // Define the full path (e.g., C:\Users\alain\Downloads\To Send)
+    private static final Path TO_SEND_PATH = DOWNLOADS_PATH.resolve(TO_SEND_FOLDER_NAME);
+    // ---------------------------------------------------
+
+    public MyMapsPage(Stage primaryStage, Scene previousScene, WebSocketService client) {
         this.primaryStage = primaryStage;
         this.previousScene = previousScene;
         this.client = client;
@@ -65,6 +75,7 @@ public class MyMapsPage {
     }
 
     private void loadMaps(GridPane mapGrid) {
+        mapGrid.getChildren().clear(); // Clear existing content
         File folder = new File(MY_MAPS_DIRECTORY);
         if (!folder.exists() || !folder.isDirectory()) {
             Label errorLabel = new Label("Error: 'my-maps' directory not found.");
@@ -94,6 +105,24 @@ public class MyMapsPage {
         }
     }
 
+    /**
+     * Cleans up the "To Send" folder in Downloads by deleting it if it is empty.
+     */
+    private void cleanupToSendFolder() {
+        File folder = TO_SEND_PATH.toFile();
+        if (folder.exists() && folder.isDirectory()) {
+            String[] contents = folder.list();
+            // Check if the directory is empty
+            if (contents == null || contents.length == 0) {
+                if (folder.delete()) {
+                    System.out.println("Cleaned up empty 'To Send' folder in Downloads.");
+                } else {
+                    System.err.println("Failed to delete empty 'To Send' folder in Downloads.");
+                }
+            }
+        }
+    }
+
     private VBox createMapItem(File file) {
         VBox mapItem = new VBox(5);
         mapItem.setAlignment(Pos.CENTER);
@@ -108,39 +137,48 @@ public class MyMapsPage {
         mapCanvas.getGraphicsContext2D().setStroke(Color.web("#ff0000"));
         mapCanvas.getGraphicsContext2D().strokeRect(0, 0, PREVIEW_SIZE, PREVIEW_SIZE);
 
-        Button sendButton = new Button("Send Map");
+        // Updated button text
+        Button sendButton = new Button("Export to Downloads/To Send");
         sendButton.setStyle("-fx-background-color: #28a745; -fx-text-fill: white;");
+
         sendButton.setOnAction(e -> {
             try {
-                // Read the map file content
-                Gson gson = new Gson();
-                FileReader reader = new FileReader(file);
-                MapData mapData = gson.fromJson(reader, MapData.class);
-                reader.close();
+                // 1. Create the target subdirectory in Downloads
+                Files.createDirectories(TO_SEND_PATH);
 
-                // Convert map data to a JSON string and send it
-                String mapJson = new Gson().toJson(mapData);
-                client.sendMessage("MAP:" + file.getName() + ":" + mapJson);
+                // 2. Define the destination file path
+                Path destinationPath = TO_SEND_PATH.resolve(file.getName());
 
-                System.out.println("Map '" + file.getName() + "' sent to players.");
+                // 3. Copy the file, replacing an existing file if present
+                Files.copy(file.toPath(), destinationPath, StandardCopyOption.REPLACE_EXISTING);
+
+                System.out.println("Map '" + file.getName() + "' copied successfully to Downloads/To Send at: " + TO_SEND_PATH.toAbsolutePath());
+
+                // Show success alert
+                Alert successAlert = new Alert(Alert.AlertType.INFORMATION);
+                successAlert.setTitle("Map Exported");
+                successAlert.setHeaderText(null);
+                successAlert.setContentText("Map '" + file.getName() + "' has been saved to your Downloads/To Send folder.");
+                successAlert.showAndWait();
+
             } catch (IOException ex) {
+                System.err.println("Error copying map to Downloads/To Send folder: " + ex.getMessage());
                 ex.printStackTrace();
+
+                Alert errorAlert = new Alert(Alert.AlertType.ERROR);
+                errorAlert.setTitle("Error");
+                errorAlert.setHeaderText("Could Not Export Map");
+                errorAlert.setContentText("Failed to copy map to the Downloads/To Send folder. Check permissions.");
+                errorAlert.showAndWait();
+
+            } finally {
+                // Always check for cleanup after the operation (successful or failed)
+                // Deletes the "To Send" folder if it is left empty
+                cleanupToSendFolder();
             }
         });
 
         mapItem.getChildren().addAll(nameLabel, mapCanvas, sendButton);
         return mapItem;
-    }
-
-    private static class MapData {
-        private int rowCount;
-        private int colCount;
-        private List<String> grid;
-
-        public MapData(int rowCount, int colCount, List<String> grid) {
-            this.rowCount = rowCount;
-            this.colCount = colCount;
-            this.grid = grid;
-        }
     }
 }

@@ -10,6 +10,7 @@ import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
+import java.util.function.Consumer; // NEW IMPORT
 
 public class CampaignsPage {
 
@@ -21,16 +22,20 @@ public class CampaignsPage {
     private ListView<String> roomList;
     private TextField messageBox;
 
-    private String currentRoom = null; // New variable to track the current room name
+    private String currentRoom = null;
 
     private Stage primaryStage;
     private Scene homeScene;
     private WebSocketService webSocketService;
+    // NEW FIELD: Store the handler reference for external retrieval
+    private final Consumer<String> currentMessageHandler;
 
     public CampaignsPage(Stage primaryStage, Scene homeScene, WebSocketService webSocketService) {
         this.primaryStage = primaryStage;
         this.homeScene = homeScene;
         this.webSocketService = webSocketService;
+        // Assign the handler to the field in the constructor
+        this.currentMessageHandler = this::handleMessage;
     }
 
     public Scene createScene() {
@@ -141,8 +146,8 @@ public class CampaignsPage {
 
         root.getChildren().addAll(mainContent, backButton);
 
-        // Bind UI updates to WebSocketService messages
-        webSocketService.setOnMessageReceived(this::handleMessage);
+        // Bind UI updates to WebSocketService messages using the stored reference
+        webSocketService.setOnMessageReceived(currentMessageHandler);
 
         FloatingDieIcon dieIcon = new FloatingDieIcon();
         StackPane.setAlignment(dieIcon, Pos.BOTTOM_RIGHT);
@@ -233,5 +238,18 @@ public class CampaignsPage {
         } else if (this.currentRoom == null) {
             addMessage("Please join a room before sending a message.", Color.web("#ff4c4c"));
         }
+    }
+
+    // NEW PUBLIC GETTERS to facilitate handing off WebSocket control
+    public WebSocketService getWebSocketService() {
+        return webSocketService;
+    }
+
+    public String getCurrentRoom() {
+        return currentRoom;
+    }
+
+    public Consumer<String> getMessageHandler() {
+        return currentMessageHandler;
     }
 }

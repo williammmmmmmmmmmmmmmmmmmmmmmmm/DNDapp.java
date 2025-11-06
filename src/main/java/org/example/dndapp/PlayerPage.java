@@ -6,6 +6,7 @@ import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.layout.GridPane;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
@@ -15,11 +16,19 @@ import javafx.stage.Stage;
 public class PlayerPage {
     private final Stage primaryStage;
     private final Scene homeScene;
+    // REQUIRED ADDITIONS
+    private final WebSocketService webSocketService;
+    private final CampaignsPage campaignsPage;
+    // END REQUIRED ADDITIONS
 
-    public PlayerPage(Stage primaryStage, Scene homeScene) {
+    // REQUIRED CHANGE: Updated constructor with 4 arguments
+    public PlayerPage(Stage primaryStage, Scene homeScene, WebSocketService webSocketService, CampaignsPage campaignsPage) {
         this.primaryStage = primaryStage;
         this.homeScene = homeScene;
+        this.webSocketService = webSocketService;
+        this.campaignsPage = campaignsPage;
     }
+    // END REQUIRED CHANGE
 
     public Scene createScene() {
         VBox root = new VBox(20);
@@ -48,7 +57,8 @@ public class PlayerPage {
         backButton.setStyle(buttonStyle);
 
         mapsButton.setOnAction(e -> {
-            MapsPage mapsPage = new MapsPage(primaryStage, createScene());
+            // FIX: MapsPage now needs 4 arguments
+            MapsPage mapsPage = new MapsPage(primaryStage, createScene(), webSocketService, campaignsPage);
             primaryStage.setScene(mapsPage.createScene());
             primaryStage.setTitle("Maps");
         });
@@ -62,10 +72,23 @@ public class PlayerPage {
         backButton.setOnAction(e -> primaryStage.setScene(homeScene));
 
         buttonGrid.add(myCharactersButton, 0, 0);
-        buttonGrid.add(mapsButton, 1, 0);;
+        buttonGrid.add(mapsButton, 1, 0);
+        buttonGrid.add(spellGuideButton, 0, 1);
+        buttonGrid.add(backButton, 1, 1);
 
-        root.getChildren().addAll(backButton, title, buttonGrid);
+        VBox content = new VBox(20);
+        content.setAlignment(Pos.CENTER);
+        content.getChildren().addAll(title, buttonGrid);
 
-        return new Scene(root);
+        root.getChildren().add(content);
+
+        //Button BackButton = new Button("Go Back");
+        //BackButton.setOnAction(e -> primaryStage.setScene(homeScene));
+        //StackPane.setAlignment(BackButton, Pos.TOP_LEFT);
+        //StackPane.setMargin(BackButton, new Insets(15));
+
+        //root.getChildren().add(BackButton);
+
+        return new Scene(root, 1000, 800);
     }
 }

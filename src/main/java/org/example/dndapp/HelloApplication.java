@@ -43,40 +43,36 @@ public class HelloApplication extends Application {
         buttonGrid.setHgap(15);
         buttonGrid.setVgap(15);
 
-        Button accountButton = new Button("Account");
         Button campaignsButton = new Button("Campaigns");
         Button dmButton = new Button("Dungeon Master");
-        Button playerButton = new Button("Player");
+        Button accountButton = new Button("Account");
+        Button playerButton = new Button("Player Tools");
 
         String buttonStyle = "-fx-padding: 10 20; -fx-font-size: 16px; -fx-cursor: hand; -fx-border-radius: 5px; -fx-background-color: #007BFF; -fx-text-fill: white;";
-        accountButton.setStyle(buttonStyle);
         campaignsButton.setStyle(buttonStyle);
         dmButton.setStyle(buttonStyle);
+        accountButton.setStyle(buttonStyle);
         playerButton.setStyle(buttonStyle);
 
-        // Remove the fixed size from the Scene constructor
-        homeScene = new Scene(root);
+        homeScene = new Scene(root, 1000, 800);
 
-        // This block is no longer needed since you are not using fullscreen.
-        // homeScene.setOnKeyPressed(event -> {
-        //     if (event.getCode() == KeyCode.F11) {
-        //         stage.setFullScreen(!stage.isFullScreen());
-        //     }
-        // });
-
-        // Uncommented and re-instantiated
+        // --- DEPENDENCY INITIALIZATION AND FIXES ---
+        // CampaignsPage and its Scene must be initialized first because it is a dependency for PlayerPage and MapsPage
         CampaignsPage campaignsPage = new CampaignsPage(stage, homeScene, webSocketService);
         campaignsScene = campaignsPage.createScene();
 
         // Uncommented and re-instantiated
+        // DMPage and AccountPage instantiation assumed to be present for compilation
         DMPage dmPage = new DMPage(stage, homeScene);
         dmScene = dmPage.createScene();
 
         AccountPage accountPage = new AccountPage(stage, homeScene);
         accountScene = accountPage.createScene();
 
-        PlayerPage playerPage = new PlayerPage(stage, homeScene);
+        // FIX: PlayerPage now requires WebSocketService and CampaignsPage
+        PlayerPage playerPage = new PlayerPage(stage, homeScene, webSocketService, campaignsPage);
         playerScene = playerPage.createScene();
+        // --- END DEPENDENCY INITIALIZATION AND FIXES ---
 
         campaignsButton.setOnAction(e -> {
             stage.setScene(campaignsScene);
@@ -105,10 +101,27 @@ public class HelloApplication extends Application {
 
         root.getChildren().addAll(title, buttonGrid);
 
-        stage.setTitle("Williams D&D App");
+        // Global Key Bindings for easy navigation
+        // F1: Home (escape all views)
+        homeScene.setOnKeyPressed(e -> {
+            if (e.getCode() == KeyCode.F1) {
+                stage.setScene(homeScene);
+                stage.setTitle("Welcome to Williams D&D app!");
+            }
+        });
+
         stage.setScene(homeScene);
+        stage.setTitle("Welcome to Williams D&D app!");
         stage.show();
 
+        // Connect the WebSocket service on application start
         webSocketService.connect();
+
+        // Clean up WebSocket connection when the stage is closed
+        stage.setOnCloseRequest(event -> webSocketService.disconnect());
+    }
+
+    public static void main(String[] args) {
+        launch();
     }
 }

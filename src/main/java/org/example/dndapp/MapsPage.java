@@ -4,30 +4,49 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.canvas.Canvas;
+import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.layout.GridPane;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
+import javafx.stage.FileChooser;
 import javafx.stage.Stage;
+
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.util.Optional;
 
 public class MapsPage {
 
     private final Stage primaryStage;
     private final Scene playerScene;
+    // NEW FIELDS FOR MULTIPLAYER INTEGRATION
+    private final WebSocketService webSocketService;
+    private final CampaignsPage campaignsPage;
+
     private static final String MAPS_DIRECTORY = "src/main/resources/maps";
     private static final double PREVIEW_SIZE = 150;
     private GridPane mapGrid;
+    private boolean isDeleteMode = false;
 
-    public MapsPage(Stage primaryStage, Scene playerScene) {
+    // UI elements that need to be updated in the delete mode
+    private Button deleteModeButton;
+    private Button cancelDeleteButton;
+
+    // UPDATED CONSTRUCTOR
+    public MapsPage(Stage primaryStage, Scene playerScene, WebSocketService webSocketService, CampaignsPage campaignsPage) {
         this.primaryStage = primaryStage;
         this.playerScene = playerScene;
+        this.webSocketService = webSocketService; // Store WebSocket service
+        this.campaignsPage = campaignsPage;       // Store CampaignsPage instance to access room and handler info
     }
 
     public Scene createScene() {
@@ -44,6 +63,22 @@ public class MapsPage {
         backButton.setStyle("-fx-padding: 10 20; -fx-font-size: 16px; -fx-cursor: hand; -fx-border-radius: 5px; -fx-background-color: #007BFF; -fx-text-fill: white;");
         backButton.setOnAction(e -> primaryStage.setScene(playerScene));
 
+        Button downloadMapButton = new Button("Download Map");
+        downloadMapButton.setStyle("-fx-padding: 10 20; -fx-font-size: 16px; -fx-cursor: hand; -fx-border-radius: 5px; -fx-background-color: #28a745; -fx-text-fill: white;");
+        downloadMapButton.setOnAction(e -> handleDownloadMap());
+
+        deleteModeButton = new Button("Delete Maps");
+        deleteModeButton.setStyle("-fx-padding: 10 20; -fx-font-size: 16px; -fx-cursor: hand; -fx-border-radius: 5px; -fx-background-color: #dc3545; -fx-text-fill: white;");
+        deleteModeButton.setOnAction(e -> toggleDeleteMode(true));
+
+        cancelDeleteButton = new Button("Cancel Deletion");
+        cancelDeleteButton.setStyle("-fx-padding: 10 20; -fx-font-size: 16px; -fx-cursor: hand; -fx-border-radius: 5px; -fx-background-color: #ffc107; -fx-text-fill: black;");
+        cancelDeleteButton.setOnAction(e -> toggleDeleteMode(false));
+        cancelDeleteButton.setVisible(false); // Hidden by default
+
+        HBox controlBar = new HBox(20, backButton, downloadMapButton, deleteModeButton, cancelDeleteButton);
+        controlBar.setAlignment(Pos.CENTER);
+
         mapGrid = new GridPane();
         mapGrid.setHgap(20);
         mapGrid.setVgap(20);
@@ -53,11 +88,52 @@ public class MapsPage {
         scrollPane.setFitToWidth(true);
         scrollPane.setStyle("-fx-background-color: transparent; -fx-border-color: transparent;");
 
-        root.getChildren().addAll(backButton, title, scrollPane);
+        root.getChildren().addAll(controlBar, title, scrollPane);
 
         loadMaps(mapGrid);
 
         return new Scene(root);
+    }
+
+    /**
+     * Toggles the delete mode and reloads the maps to update the buttons.
+     */
+    private void toggleDeleteMode(boolean activate) {
+        isDeleteMode = activate;
+
+        // Update button visibility
+        deleteModeButton.setVisible(!activate);
+        cancelDeleteButton.setVisible(activate);
+
+        // Also hide download button in delete mode for cleaner UI
+        // Assuming downloadMapButton is accessible or you update the controlBar
+        // Since we put them all in controlBar, we need to hide it carefully.
+        HBox controlBar = (HBox) deleteModeButton.getParent();
+        controlBar.getChildren().get(1).setVisible(!activate); // downloadMapButton is index 1
+
+        loadMaps(mapGrid); // Reloads the grid, using the updated isDeleteMode flag
+    }
+
+    /**
+     * Deletes the specified map file and reloads the map list.
+     */
+    private void deleteMap(File file) {
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.setTitle("Confirm Deletion");
+        alert.setHeaderText("Delete Map: " + file.getName());
+        alert.setContentText("Are you sure you want to permanently delete this map? This action cannot be undone.");
+
+        Optional<ButtonType> result = alert.showAndWait();
+
+        if (result.isPresent() && result.get() == ButtonType.OK) {
+            if (file.delete()) {
+                System.out.println("Map deleted successfully: " + file.getName());
+                loadMaps(mapGrid); // Reload after successful deletion
+            } else {
+                System.err.println("Failed to delete map: " + file.getName());
+                // Optional: show a user-friendly error dialog
+            }
+        }
     }
 
     private void loadMaps(GridPane mapGrid) {
@@ -105,15 +181,60 @@ public class MapsPage {
         mapCanvas.getGraphicsContext2D().setStroke(Color.web("#ff0000"));
         mapCanvas.getGraphicsContext2D().strokeRect(0, 0, PREVIEW_SIZE, PREVIEW_SIZE);
 
-        Button viewButton = new Button("View Map");
-        viewButton.setOnAction(e -> {
-            PlayerMapViewerPage viewerPage = new PlayerMapViewerPage(primaryStage, createScene(), file.getName());
-            primaryStage.setScene(viewerPage.createScene());
-            primaryStage.setTitle("Map Viewer");
-        });
+        Button actionButton;
 
-        mapItem.getChildren().addAll(nameLabel, mapCanvas, viewButton);
+        if (isDeleteMode) {
+            actionButton = new Button("DELETE");
+            actionButton.setStyle("-fx-background-color: #dc3545; -fx-text-fill: white;");
+            actionButton.setOnAction(e -> deleteMap(file));
+        } else {
+            actionButton = new Button("View Map");
+            actionButton.setStyle("-fx-background-color: #007BFF; -fx-text-fill: white;");
+            actionButton.setOnAction(e -> {
+                // FIX: Updated constructor call with all 6 required arguments
+                PlayerMapViewerPage viewerPage = new PlayerMapViewerPage(
+                        primaryStage,
+                        createScene(), // The current scene (MapsPage) to return to
+                        file.getName(),
+                        webSocketService,
+                        campaignsPage.getCurrentRoom(),
+                        campaignsPage.getMessageHandler()
+                );
+                primaryStage.setScene(viewerPage.createScene());
+                primaryStage.setTitle("Map Viewer");
+            });
+        }
+
+        mapItem.getChildren().addAll(nameLabel, mapCanvas, actionButton);
         return mapItem;
+    }
+
+    /**
+     * Handles the button click to open a file chooser and select a map file.
+     */
+    private void handleDownloadMap() {
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Select Map JSON File");
+
+        // Set an extension filter for JSON files
+        FileChooser.ExtensionFilter extFilter = new FileChooser.ExtensionFilter("JSON files (*.json)", "*.json");
+        fileChooser.getExtensionFilters().add(extFilter);
+
+        // Show open file dialog
+        File selectedFile = fileChooser.showOpenDialog(primaryStage);
+
+        if (selectedFile != null) {
+            try {
+                // Read the file content as a string (JSON data)
+                String mapDataJson = Files.readString(selectedFile.toPath());
+
+                // Use the existing receiveMap method to save the file
+                receiveMap(selectedFile.getName(), mapDataJson);
+            } catch (IOException e) {
+                System.err.println("Error reading selected map file: " + e.getMessage());
+                // Optionally show an alert to the user
+            }
+        }
     }
 
     /**

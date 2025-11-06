@@ -3,6 +3,7 @@ package org.example.dndapp;
 
 import com.google.gson.Gson;
 import javafx.animation.AnimationTimer;
+import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -18,14 +19,15 @@ import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
-import javafx.scene.input.MouseButton;
 import javafx.scene.layout.StackPane;
 import javafx.scene.control.ScrollPane;
 
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.Random;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
 
 public class PlayerMapViewerPage {
 
@@ -63,11 +65,24 @@ public class PlayerMapViewerPage {
     private final AnimationTimer doomLoop;
     private long lastFrameTime = 0;
 
+    // NEW: Multiplayer fields
+    private final WebSocketService webSocketService;
+    private final String currentRoom;
+    // Map of other players: WebSocket Address -> [q, r]
+    private final Map<String, int[]> otherPlayers = new ConcurrentHashMap<>();
+    // Reference to the handler of the previous scene (CampaignsPage)
+    private final Consumer<String> previousMessageHandler;
 
-    public PlayerMapViewerPage(Stage primaryStage, Scene mapsScene, String mapFileName) {
+
+    public PlayerMapViewerPage(Stage primaryStage, Scene mapsScene, String mapFileName,
+                               WebSocketService webSocketService, String currentRoom,
+                               Consumer<String> previousMessageHandler) { // UPDATED CONSTRUCTOR
         this.primaryStage = primaryStage;
         this.mapsScene = mapsScene;
         this.mapFileName = mapFileName;
+        this.webSocketService = webSocketService; // NEW
+        this.currentRoom = currentRoom; // NEW
+        this.previousMessageHandler = previousMessageHandler; // NEW
 
         // Initialize the external DOOM engine
         this.doomEngine = new DoomEngine();
@@ -83,6 +98,22 @@ public class PlayerMapViewerPage {
         };
         // Start the timer immediately, it will only draw when isDoomModeActive is true
         this.doomLoop.start();
+
+        // NEW: Set the current page as the WebSocket message handler
+        if (webSocketService != null) {
+            webSocketService.setOnMessageReceived(this::handleRoomMessage);
+        }
+    }
+
+    /**
+     * NEW: Restores the previous WebSocket message handler and navigates back.
+     */
+    private void handleGoBack() {
+        if (webSocketService != null && previousMessageHandler != null) {
+            // Restore the previous handler (CampaignsPage::handleMessage)
+            webSocketService.setOnMessageReceived(previousMessageHandler);
+        }
+        primaryStage.setScene(mapsScene);
     }
 
     public Scene createScene() {
@@ -102,7 +133,8 @@ public class PlayerMapViewerPage {
 
         Button backButton = new Button("Go Back");
         backButton.setStyle("-fx-padding: 12 24; -fx-font-size: 16px; -fx-cursor: hand; -fx-border-radius: 8px; -fx-background-color: #007bff; -fx-text-fill: white; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.5), 10, 0, 0, 0);");
-        backButton.setOnAction(e -> primaryStage.setScene(mapsScene));
+        // UPDATED: Use the new handler to manage WebSocket delegate
+        backButton.setOnAction(e -> handleGoBack());
 
         VBox fogControls = new VBox(5);
         fogControls.setAlignment(Pos.CENTER_LEFT);
@@ -154,17 +186,14 @@ public class PlayerMapViewerPage {
         scrollPane.setFitToWidth(true);
         scrollPane.setFitToHeight(true);
 
-// --- NEW: Floating Die Icon Setup ---
+        // --- Floating Die Icon Setup ---
         FloatingDieIcon dieIcon = new FloatingDieIcon();
         StackPane.setAlignment(dieIcon, Pos.BOTTOM_RIGHT);
         StackPane.setMargin(dieIcon, new Insets(20));
 
-        // 2. The ONLY way to make a node float over a scrollable area is to wrap the
-        //    ScrollPane and the icon in a StackPane, which becomes the Scene root.
         StackPane finalRoot = new StackPane(scrollPane, dieIcon);
 
-        // 3. Create the Scene using the StackPane
-        // This line must use the StackPane to allow the icon to float.
+        // Create the Scene using the StackPane
         Scene scene = new Scene(finalRoot, 900, 800);
         setupMouseEvents();
         setupKeyEvents(scene);
@@ -192,6 +221,7 @@ public class PlayerMapViewerPage {
                 playerHexR = hex[1];
                 updateRevealedTiles();
                 drawMap();
+                sendMoveCommand(); // NEW: Send move to server
             }
         });
 
@@ -257,6 +287,7 @@ public class PlayerMapViewerPage {
                 playerHexR = newR;
                 updateRevealedTiles();
                 drawMap();
+                sendMoveCommand(); // NEW: Send move to server
             }
         });
 
@@ -307,6 +338,77 @@ public class PlayerMapViewerPage {
                 mapCanvas.getWidth(),
                 mapCanvas.getHeight()
         );
+    }
+
+    /**
+     * NEW: Sends the player's current hex position to the server.
+     * Message format: MOVE:roomName:q,r
+     */
+    private void sendMoveCommand() {
+        if (webSocketService != null && currentRoom != null) {
+            // Sends the command that the GameServer needs to handle: MOVE:roomName:q,r
+            String message = "MOVE:" + currentRoom + ":" + playerHexQ + "," + playerHexR;
+            webSocketService.sendMessage(message);
+        }
+    }
+
+    /**
+     * NEW: Handles WebSocket messages relevant to the map/room.
+     * Processes PLAYER_MOVE, PLAYER_LIST, and PLAYER_LEFT messages.
+     */
+    private void handleRoomMessage(String message) {
+        Platform.runLater(() -> {
+            if (message.startsWith("PLAYER_MOVE:")) {
+                // Format: PLAYER_MOVE:address:q:r
+                try {
+                    String[] parts = message.substring("PLAYER_MOVE:".length()).split(":", 3);
+                    String address = parts[0];
+                    int q = Integer.parseInt(parts[1]);
+                    int r = Integer.parseInt(parts[2]);
+
+                    // Update the position of the other player
+                    otherPlayers.put(address, new int[]{q, r});
+                    drawMap();
+                } catch (Exception e) {
+                    // Ignore malformed message
+                }
+            } else if (message.startsWith("PLAYER_LIST:")) {
+                // Format: PLAYER_LIST:address1:q1,r1|address2:q2,r2|...
+                otherPlayers.clear();
+                String data = message.substring("PLAYER_LIST:".length());
+                if (!data.isEmpty()) {
+                    String[] playerEntries = data.split("\\|");
+                    for (String entry : playerEntries) {
+                        try {
+                            String[] parts = entry.split(":");
+                            if (parts.length == 2) {
+                                String address = parts[0];
+                                String[] coords = parts[1].split(",");
+                                if (coords.length == 2) {
+                                    int q = Integer.parseInt(coords[0]);
+                                    int r = Integer.parseInt(coords[1]);
+
+                                    otherPlayers.put(address, new int[]{q, r});
+                                }
+                            }
+                        } catch (Exception e) {
+                            // Ignore malformed player entry
+                        }
+                    }
+                    drawMap();
+                }
+            } else if (message.startsWith("PLAYER_LEFT:")) {
+                // Format: PLAYER_LEFT:address
+                String address = message.substring("PLAYER_LEFT:".length());
+                otherPlayers.remove(address);
+                drawMap();
+            } else {
+                // Forward unknown messages back to the previous handler (CampaignsPage)
+                if (previousMessageHandler != null) {
+                    previousMessageHandler.accept(message);
+                }
+            }
+        });
     }
 
     private int[] screenToHex(double x, double y) {
@@ -394,7 +496,13 @@ public class PlayerMapViewerPage {
         gc.clearRect(0, 0, mapCanvas.getWidth(), mapCanvas.getHeight());
 
         drawGridAndFog();
-        drawPlayerToken(gc);
+        drawPlayerToken(gc, playerHexQ, playerHexR, Color.web("#ffd700"), Color.web("#8b0000")); // Local Player
+
+        // NEW: Draw all other players
+        otherPlayers.forEach((address, pos) -> {
+            // Draw other players with a different color (Green)
+            drawPlayerToken(gc, pos[0], pos[1], Color.web("#00ff7f"), Color.web("#006400"));
+        });
     }
 
     private void drawGridAndFog() {
@@ -438,16 +546,18 @@ public class PlayerMapViewerPage {
         gc.strokePolygon(xPoints, yPoints, 6);
     }
 
-    private void drawPlayerToken(GraphicsContext gc) {
-        // ... (existing implementation)
-        double xCenter = HEX_SIZE * 1.5 * playerHexQ;
-        double yCenter = hexHeight * playerHexR + hexHeight * (playerHexQ % 2) / 2;
+    /**
+     * UPDATED: Unified method to draw any player token (local or remote).
+     */
+    private void drawPlayerToken(GraphicsContext gc, int q, int r, Color fill, Color stroke) {
+        double xCenter = HEX_SIZE * 1.5 * q;
+        double yCenter = hexHeight * r + hexHeight * (q % 2) / 2;
 
         // Draw the player token slightly smaller
         double tokenSize = HEX_SIZE * 0.8;
-        gc.setFill(Color.web("#ffd700")); // Gold color for the token
+        gc.setFill(fill);
         gc.fillOval(xCenter - tokenSize / 2, yCenter - tokenSize / 2, tokenSize, tokenSize);
-        gc.setStroke(Color.web("#8b0000"));
+        gc.setStroke(stroke);
         gc.setLineWidth(2);
         gc.strokeOval(xCenter - tokenSize / 2, yCenter - tokenSize / 2, tokenSize, tokenSize);
     }
