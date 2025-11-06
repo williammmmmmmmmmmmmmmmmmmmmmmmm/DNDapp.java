@@ -1,0 +1,36 @@
+{
+  "name": "e",
+  "player": "e",
+  "selectedClass": "Bard",
+  "selectedSubclass": "College of Swords(XG)",
+  "selectedSpecies": "Astral Elf",
+  "background": "Acolyte",
+  "experience": 12000,
+  "abilityScores": {
+    "STR": 15,
+    "DEX": 14,
+    "CON": 13,
+    "INT": 12,
+    "WIS": 10,
+    "CHA": 8
+  },
+  "alignment": "True Neutral",
+  "age": "e",
+  "height": "e",
+  "weight": "e",
+  "hair": "e",
+  "eyes": "e",
+  "skin": "e",
+  "faith": "e",
+  "lifestyle": "e",
+  "knownSpells": {},
+  "equippedItems": {},
+  "inventory": [],
+  "customActions": [
+    "Unarmed Strike | 1d4 Bludgeoning Damage"
+  ],
+  "featuresAndTraits": [
+    "Darkvision | You can see in dim light within 60 feet of you.",
+    "Fey Ancestry | You have advantage on saving throws against being charmed."
+  ]
+}
