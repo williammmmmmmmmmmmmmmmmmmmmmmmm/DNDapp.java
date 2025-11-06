@@ -37,6 +37,12 @@ public class Character implements Serializable {
     private List<String> customActions = new ArrayList<>();
     private List<String> featuresAndTraits = new ArrayList<>();
 
+    // NEW FIELDS for Vitals editability (Nullable Integers for overrides)
+    private Integer currentHitPoints;
+    private Integer armorClassOverride;
+    private Integer speedOverride;
+    private String hitDiceOverride;
+
     public Character(String name, String player, String selectedClass, String selectedSubclass, String selectedSpecies,
                      String background, int experience, Map<String, Integer> abilityScores, String alignment, String age,
                      String height, String weight, String hair, String eyes, String skin, String faith, String lifestyle) {
@@ -64,7 +70,7 @@ public class Character implements Serializable {
      */
     private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
         in.defaultReadObject();
-        // Null checks for fields that might be missing from old save files
+        // Null checks for existing fields
         if (this.knownSpells == null) {
             this.knownSpells = new HashMap<>();
         }
@@ -81,9 +87,10 @@ public class Character implements Serializable {
         if (this.featuresAndTraits == null) {
             this.featuresAndTraits = new ArrayList<>();
         }
+        // currentHitPoints will be initialized on first call to getCurrentHitPoints() if null
     }
 
-    // New methods to calculate vitals
+    // Methods to calculate Vitals (Base Calculations)
     public int getLevel() {
         int[] expTable = {0, 300, 900, 2700, 6500, 14000, 23000, 34000, 48000, 64000, 85000, 100000, 120000, 140000, 165000, 195000, 225000, 265000, 305000, 355000};
         for (int i = expTable.length - 1; i >= 0; i--) {
@@ -101,7 +108,8 @@ public class Character implements Serializable {
         return 0;
     }
 
-    public int getHitPoints() {
+    // RENAMED: This is now the calculated MAX HP
+    public int getMaxHitPoints() {
         Map<String, Integer> classHitDice = new HashMap<>();
         classHitDice.put("Barbarian", 12);
         classHitDice.put("Bard", 8);
@@ -129,13 +137,21 @@ public class Character implements Serializable {
         return Math.max(1, totalHP);
     }
 
+    // MODIFIED: Uses override if present
     public int getArmorClass() {
-        // Simple base AC + Dexterity modifier
-        // This can be expanded later with armor and shield calculations
+        // Return override if set, otherwise calculate base AC
+        if (armorClassOverride != null) {
+            return armorClassOverride;
+        }
         return 10 + getAbilityModifier("DEX");
     }
 
+    // MODIFIED: Uses override if present
     public int getSpeed() {
+        // Return override if set, otherwise calculate base speed
+        if (speedOverride != null) {
+            return speedOverride;
+        }
         Map<String, Integer> speciesBaseSpeed = new HashMap<>();
         speciesBaseSpeed.put("Dragonborn", 30);
         speciesBaseSpeed.put("Dwarf", 25);
@@ -149,7 +165,12 @@ public class Character implements Serializable {
         return speciesBaseSpeed.getOrDefault(selectedSpecies, 30);
     }
 
+    // MODIFIED: Uses override if present
     public String getHitDice() {
+        // Return override if set, otherwise calculate base hit dice
+        if (hitDiceOverride != null && !hitDiceOverride.isEmpty()) {
+            return hitDiceOverride;
+        }
         Map<String, String> classHitDice = new HashMap<>();
         classHitDice.put("Barbarian", "1d12");
         classHitDice.put("Bard", "1d8");
@@ -203,6 +224,32 @@ public class Character implements Serializable {
     // Vitals: Experience Getter & Setter
     public int getExperience() { return experience; }
     public void setExperience(int experience) { this.experience = experience; }
+
+    // NEW: Current HP Getter & Setter
+    public int getCurrentHitPoints() {
+        if (currentHitPoints == null) {
+            currentHitPoints = getMaxHitPoints(); // Initialize current HP to max HP
+        }
+        return currentHitPoints;
+    }
+    public void setCurrentHitPoints(int currentHitPoints) {
+        this.currentHitPoints = currentHitPoints;
+    }
+
+    // NEW: Armor Class Override Setter
+    public void setArmorClassOverride(Integer ac) {
+        this.armorClassOverride = ac;
+    }
+
+    // NEW: Speed Override Setter
+    public void setSpeedOverride(Integer speed) {
+        this.speedOverride = speed;
+    }
+
+    // NEW: Hit Dice Override Setter
+    public void setHitDiceOverride(String hitDice) {
+        this.hitDiceOverride = hitDice;
+    }
 
     // Ability Scores: Getter and Updater
     public Map<String, Integer> getAbilityScores() { return abilityScores; }

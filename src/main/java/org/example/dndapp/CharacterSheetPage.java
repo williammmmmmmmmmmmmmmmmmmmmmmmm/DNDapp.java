@@ -34,6 +34,7 @@ public class CharacterSheetPage {
     private final Map<String, Integer> speciesBaseSpeed = new HashMap<>();
     private final Map<String, Integer> classHitDice = new HashMap<>();
     private ListView<Item> inventoryList;
+    private GridPane savingThrowsGrid; // Declared here to be accessible for updates
 
     // Fields for the Vitals and Details labels that need to be updated
     private VBox actionsSectionVBox;
@@ -41,7 +42,7 @@ public class CharacterSheetPage {
     private VBox skillsSectionVBox;
     private Label levelValueLabel;
     private Label expValueLabel;
-    private Label hpValueLabel;
+    private Label hpValueLabel; // Updated to show Current HP / Max HP
     private Label acValueLabel;
     private Label speedValueLabel;
     private Label hitDiceValueLabel;
@@ -56,6 +57,16 @@ public class CharacterSheetPage {
             "Athletics (STR): +4 (P)"
     ));
 
+    // --- NEW COLOR DEFINITIONS ---
+    private static final String BG_BLACK = "#000000"; // Black Background
+    private static final String SECTION_BG_DARK = "#1a1a1a"; // Off-Black for sections
+    private static final String ACCENT_RED = "#FF3333"; // Red for Header/Main Focus
+    private static final String ACCENT_BLUE = "#3399FF"; // Bright Blue for Titles/Borders
+    private static final String ACCENT_ORANGE = "#FF8C00"; // Orange for Labels/Data
+    private static final String TEXT_LIGHT = "#f0f0f0"; // Near White for main text
+    private static final String TEXT_MUTED = "#999999"; // Muted Gray for descriptions
+    private static final String FIELD_BG = "#333333"; // Darker Gray for input fields
+
 
     public CharacterSheetPage(Character character, Stage primaryStage, Scene previousScene) {
         this.character = character;
@@ -63,7 +74,8 @@ public class CharacterSheetPage {
         this.previousScene = previousScene;
         this.root = new VBox();
         this.root.setPadding(new Insets(20));
-        this.root.setStyle("-fx-background-color: #212529;");
+        // APPLY BLACK BACKGROUND
+        this.root.setStyle("-fx-background-color: " + BG_BLACK + ";");
 
         populateSpeciesBaseSpeed();
         populateClassHitDice();
@@ -83,7 +95,6 @@ public class CharacterSheetPage {
     }
 
     private void populateSpeciesBaseSpeed() {
-        // ... (Unchanged helper method)
         speciesBaseSpeed.put("Dragonborn", 30);
         speciesBaseSpeed.put("Dwarf", 25);
         speciesBaseSpeed.put("Elf", 30);
@@ -96,7 +107,6 @@ public class CharacterSheetPage {
     }
 
     private void populateClassHitDice() {
-        // ... (Unchanged helper method)
         classHitDice.put("Barbarian", 12);
         classHitDice.put("Bard", 8);
         classHitDice.put("Cleric", 8);
@@ -116,15 +126,18 @@ public class CharacterSheetPage {
         mainLayout.setTop(createHeader());
         mainLayout.setCenter(createMainContent());
         mainLayout.setPadding(new Insets(15));
-        mainLayout.setStyle("-fx-background-color: #212529;");
+        // APPLY BLACK BACKGROUND
+        mainLayout.setStyle("-fx-background-color: " + BG_BLACK + ";");
 
         ScrollPane scrollPane = new ScrollPane(mainLayout);
         scrollPane.setFitToWidth(true);
         scrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.ALWAYS);
-        scrollPane.setStyle("-fx-background-color: #212529;");
+        // APPLY BLACK BACKGROUND TO SCROLLPANE
+        scrollPane.setStyle("-fx-background-color: " + BG_BLACK + ";");
 
         Button backButton = new Button("Back to My Characters");
-        backButton.setStyle("-fx-padding: 10 20; -fx-font-size: 16px; -fx-cursor: hand; -fx-border-radius: 5px; -fx-background-color: #007BFF; -fx-text-fill: white;");
+        // APPLY BLUE THEME TO BUTTON
+        backButton.setStyle("-fx-padding: 10 20; -fx-font-size: 16px; -fx-cursor: hand; -fx-border-radius: 5px; -fx-background-color: " + ACCENT_BLUE + "; -fx-text-fill: white; -fx-font-weight: bold;");
         backButton.setOnAction(e -> primaryStage.setScene(previousScene));
         backButton.setPrefWidth(250);
 
@@ -140,25 +153,24 @@ public class CharacterSheetPage {
     }
 
     private VBox createHeader() {
-        // ... (Unchanged)
         VBox header = new VBox();
         header.setAlignment(Pos.CENTER);
         header.setSpacing(5);
 
-        Label nameLabel = new Label(character.getName());
+        Label nameLabel = new Label(character.getName().toUpperCase());
         nameLabel.setFont(Font.font("Arial", FontWeight.BOLD, 48));
-        nameLabel.setTextFill(Color.web("#dee2e6"));
+        // APPLY RED ACCENT FOR CHARACTER NAME
+        nameLabel.setTextFill(Color.web(ACCENT_RED));
 
         Label classSpeciesLabel = new Label(character.getSelectedClass() + " | " + character.getSelectedSpecies());
         classSpeciesLabel.setFont(Font.font("Arial", 18));
-        classSpeciesLabel.setTextFill(Color.web("#adb5bd"));
+        classSpeciesLabel.setTextFill(Color.web(TEXT_MUTED));
 
         header.getChildren().addAll(nameLabel, classSpeciesLabel);
         return header;
     }
 
     private GridPane createMainContent() {
-        // ... (Unchanged layout)
         GridPane mainGrid = new GridPane();
         mainGrid.setHgap(20);
         mainGrid.setVgap(20);
@@ -172,7 +184,7 @@ public class CharacterSheetPage {
                 createVitalsSection(),
                 createAbilityScoresSection(),
                 createSavingThrowsSection(),
-                createSkillsSection() // Section 3
+                createSkillsSection()
         );
 
         // Center Column
@@ -181,15 +193,15 @@ public class CharacterSheetPage {
         centerColumn.getChildren().addAll(
                 createEquipmentSection(),
                 createInventorySection(),
-                createPhysicalAndPersonalSection() // Section 2
+                createPhysicalAndPersonalSection()
         );
 
         // Right Column
         VBox rightColumn = new VBox(20);
         rightColumn.setAlignment(Pos.TOP_CENTER);
         rightColumn.getChildren().addAll(
-                createActionsSection(), // Section 1
-                createFeatsAndTraitsSection() // Section 4
+                createActionsSection(),
+                createFeatsAndTraitsSection()
         );
         if (!nonSpellcastingClasses.contains(character.getSelectedClass())) {
             rightColumn.getChildren().add(0, createSpellsSection());
@@ -213,16 +225,17 @@ public class CharacterSheetPage {
 
     private VBox createSection(String title) {
         VBox section = new VBox(10);
-        section.setStyle("-fx-background-color: #343a40; -fx-padding: 15; -fx-background-radius: 10; -fx-border-radius: 10; -fx-border-color: #495057; -fx-border-width: 1;");
+        // APPLY DARK SECTION BG and BLUE BORDER
+        section.setStyle("-fx-background-color: " + SECTION_BG_DARK + "; -fx-padding: 15; -fx-background-radius: 10; -fx-border-radius: 10; -fx-border-color: " + ACCENT_BLUE + "; -fx-border-width: 2;");
         Label titleLabel = new Label(title);
         titleLabel.setFont(Font.font("Arial", FontWeight.BOLD, 20));
-        titleLabel.setTextFill(Color.web("#e9ecef"));
+        // APPLY BLUE ACCENT FOR SECTION TITLES
+        titleLabel.setTextFill(Color.web(ACCENT_BLUE));
         section.getChildren().add(titleLabel);
         return section;
     }
 
     private VBox createEquipmentSection() {
-        // ... (Unchanged)
         VBox equipmentSection = createSection("Equipment");
         equipmentSection.setAlignment(Pos.CENTER);
 
@@ -231,6 +244,7 @@ public class CharacterSheetPage {
         gearGrid.setVgap(5);
         gearGrid.setAlignment(Pos.CENTER);
         gearGrid.setPadding(new Insets(10));
+        gearGrid.setStyle("-fx-background-color: transparent;"); // Ensure grid is transparent
 
         String speciesName = character.getSelectedSpecies().replaceAll("\\s+", "");
         Image speciesSilhouette = new Image(
@@ -239,6 +253,7 @@ public class CharacterSheetPage {
         ImageView silhouetteView = new ImageView(speciesSilhouette);
         silhouetteView.setFitWidth(150);
         silhouetteView.setPreserveRatio(true);
+        silhouetteView.setStyle("-fx-opacity: 0.6;"); // Dim the silhouette for a darker theme
 
         VBox primaryWeapon = createEquipmentSlot("Primary Weapon");
         VBox offHand = createEquipmentSlot("Off-Hand");
@@ -283,28 +298,29 @@ public class CharacterSheetPage {
     }
 
     private VBox createEquipmentSlot(String name) {
-        // ... (Unchanged)
         VBox slot = new VBox(3);
         slot.setAlignment(Pos.CENTER);
-        slot.setStyle("-fx-border-color: #6c757d; -fx-border-width: 1; -fx-border-radius: 5; -fx-padding: 5; -fx-background-color: #495057;");
+        // ORANGE border and dark background for slots
+        slot.setStyle("-fx-border-color: " + ACCENT_ORANGE + "; -fx-border-width: 1; -fx-border-radius: 5; -fx-padding: 5; -fx-background-color: #333333;");
         slot.setPrefSize(80, 40);
 
         Label label = new Label(name);
         label.setFont(Font.font("Arial", 10));
-        label.setTextFill(Color.web("#e9ecef"));
+        label.setTextFill(Color.web(TEXT_LIGHT));
 
         Label itemLabel = new Label("Empty");
         itemLabel.setFont(Font.font("Arial", FontWeight.BOLD, 8));
-        itemLabel.setTextFill(Color.web("#ffc107"));
+        // ORANGE text for the item name
+        itemLabel.setTextFill(Color.web(ACCENT_ORANGE));
 
         slot.getChildren().addAll(label, itemLabel);
         return slot;
     }
 
     private void updateEquippedItemsDisplay() {
-        // ... (Unchanged, calls updateActionsSection)
         for (VBox slot : equipmentSlots.values()) {
             ((Label) slot.getChildren().get(1)).setText("Empty");
+            ((Label) slot.getChildren().get(1)).setTextFill(Color.web(ACCENT_ORANGE));
             slot.setOnContextMenuRequested(null);
         }
 
@@ -317,6 +333,7 @@ public class CharacterSheetPage {
                 if (slot != null) {
                     Label itemLabel = (Label) slot.getChildren().get(1);
                     itemLabel.setText(equippedItem.getName());
+                    itemLabel.setTextFill(Color.web(ACCENT_RED)); // Red for currently equipped items
 
                     ContextMenu equippedContextMenu = new ContextMenu();
                     MenuItem unequipItem = new MenuItem("Unequip " + equippedItem.getName());
@@ -343,11 +360,32 @@ public class CharacterSheetPage {
     }
 
     private VBox createInventorySection() {
-        // ... (Unchanged item management logic)
         VBox inventorySection = createSection("Inventory");
         inventoryList = new ListView<>();
         inventoryList.setItems(FXCollections.observableArrayList(character.getInventory()));
         inventoryList.setPrefHeight(200);
+        // Styling ListView items
+        inventoryList.setStyle("-fx-control-inner-background: " + FIELD_BG + "; -fx-text-fill: " + TEXT_LIGHT + "; -fx-border-color: " + ACCENT_ORANGE + ";");
+        inventoryList.setCellFactory(lv -> new ListCell<Item>() {
+            @Override
+            protected void updateItem(Item item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setGraphic(null);
+                } else {
+                    setText(item.getName());
+                    setTextFill(Color.web(TEXT_LIGHT));
+                    // Highlight equipped items in a subtle color
+                    if (character.getEquippedItems() != null && character.getEquippedItems().containsValue(item)) {
+                        setStyle("-fx-background-color: #444444; -fx-text-fill: " + ACCENT_RED + ";");
+                    } else {
+                        setStyle("-fx-background-color: " + FIELD_BG + "; -fx-text-fill: " + TEXT_LIGHT + ";");
+                    }
+                }
+            }
+        });
+
 
         ContextMenu contextMenu = new ContextMenu();
         MenuItem equipItem = new MenuItem("Equip Item");
@@ -451,11 +489,13 @@ public class CharacterSheetPage {
 
         TextField newItemField = new TextField();
         newItemField.setPromptText("Enter new item name...");
-        newItemField.setStyle("-fx-background-color: #495057; -fx-text-fill: #e9ecef; -fx-prompt-text-fill: #adb5bd; -fx-border-color: #6c757d; -fx-border-width: 1; -fx-border-radius: 5;");
+        // Style TextField for dark theme
+        newItemField.setStyle("-fx-background-color: " + FIELD_BG + "; -fx-text-fill: " + TEXT_LIGHT + "; -fx-prompt-text-fill: " + TEXT_MUTED + "; -fx-border-color: " + ACCENT_ORANGE + "; -fx-border-width: 1; -fx-border-radius: 5;");
         newItemField.setPrefWidth(200);
 
         Button addItemButton = new Button("Add Item");
-        addItemButton.setStyle("-fx-padding: 5 10; -fx-font-size: 12px; -fx-cursor: hand; -fx-background-color: #28a745; -fx-text-fill: white;");
+        // Style Add Item button (Green accent)
+        addItemButton.setStyle("-fx-padding: 5 10; -fx-font-size: 12px; -fx-cursor: hand; -fx-background-color: #28a745; -fx-text-fill: white; -fx-font-weight: bold;");
 
         addItemButton.setOnAction(event -> {
             String itemName = newItemField.getText().trim();
@@ -476,7 +516,7 @@ public class CharacterSheetPage {
         return inventorySection;
     }
 
-    // NEW: Functional Interface for setters
+    // Functional Interface for setters
     @FunctionalInterface
     private interface Setter<T> {
         void set(T value);
@@ -528,7 +568,8 @@ public class CharacterSheetPage {
             detailsGrid.add(valueLabel, 1, row);
 
             Button editButton = new Button("Edit");
-            editButton.setStyle("-fx-padding: 2 5; -fx-font-size: 10px; -fx-cursor: hand; -fx-background-color: #007BFF; -fx-text-fill: white; -fx-border-radius: 3;");
+            // Style Edit button (Blue accent)
+            editButton.setStyle("-fx-padding: 2 5; -fx-font-size: 10px; -fx-cursor: hand; -fx-background-color: " + ACCENT_BLUE + "; -fx-text-fill: white; -fx-border-radius: 3; -fx-font-weight: bold;");
             editButton.setOnAction(e -> editPersonalDetail(detailName, valueLabel, valueLabel.getText(), setter));
             detailsGrid.add(editButton, 2, row);
 
@@ -554,81 +595,195 @@ public class CharacterSheetPage {
     }
 
     private Label createDetailLabel(String text) {
-        // ... (Unchanged)
         Label label = new Label(text);
         label.setFont(Font.font("Arial", FontWeight.BOLD, 14));
-        label.setTextFill(Color.web("#adb5bd"));
+        // APPLY ORANGE ACCENT FOR LABELS
+        label.setTextFill(Color.web(ACCENT_ORANGE));
         return label;
     }
 
     private Label createDetailValue(String text) {
-        // ... (Unchanged)
         Label label = new Label(text);
         label.setFont(Font.font("Arial", 14));
-        label.setTextFill(Color.web("#e9ecef"));
+        label.setTextFill(Color.web(TEXT_LIGHT));
         return label;
     }
 
     // NEW: Method to update all vitals labels
     private void updateVitalsDisplay() {
         int level = character.getLevel();
-        int hp = character.getHitPoints();
+        int maxHp = character.getMaxHitPoints();
+        int currentHp = character.getCurrentHitPoints();
         int ac = character.getArmorClass();
         int speed = character.getSpeed();
         String hitDice = character.getHitDice();
 
         if (levelValueLabel != null) levelValueLabel.setText(String.valueOf(level));
         if (expValueLabel != null) expValueLabel.setText(String.valueOf(character.getExperience()));
-        if (hpValueLabel != null) hpValueLabel.setText(String.valueOf(hp));
+        // Updated to display Current HP / Max HP
+        if (hpValueLabel != null) hpValueLabel.setText(currentHp + " / " + maxHp);
         if (acValueLabel != null) acValueLabel.setText(String.valueOf(ac));
-        if (speedValueLabel != null) speedValueLabel.setText(String.valueOf(speed));
+        if (speedValueLabel != null) speedValueLabel.setText(speed + " ft");
         if (hitDiceValueLabel != null) hitDiceValueLabel.setText(hitDice);
     }
 
-    // Section 5: Vitals (XP is editable)
+    // Section 5: Vitals (All editable)
     private VBox createVitalsSection() {
         VBox vitals = createSection("Vitals");
         GridPane vitalsGrid = new GridPane();
         vitalsGrid.setHgap(10);
         vitalsGrid.setVgap(5);
 
-        // Level
+        // Level (Calculated from XP, but its display value is needed for the grid)
         levelValueLabel = createVitalsStatValue(String.valueOf(character.getLevel()));
         vitalsGrid.add(createVitalsStatLabel("Level"), 0, 0);
         vitalsGrid.add(levelValueLabel, 1, 0);
 
-        // XP (Editable - requires Character.setExperience)
+        // XP (Editable - already implemented)
         expValueLabel = createVitalsStatValue(String.valueOf(character.getExperience()));
         vitalsGrid.add(createVitalsStatLabel("XP"), 0, 1);
         vitalsGrid.add(expValueLabel, 1, 1);
         Button editExpButton = new Button("Edit");
-        editExpButton.setStyle("-fx-padding: 2 5; -fx-font-size: 10px; -fx-cursor: hand; -fx-background-color: #007BFF; -fx-text-fill: white; -fx-border-radius: 3;");
+        editExpButton.setStyle("-fx-padding: 2 5; -fx-font-size: 10px; -fx-cursor: hand; -fx-background-color: " + ACCENT_BLUE + "; -fx-text-fill: white; -fx-border-radius: 3; -fx-font-weight: bold;");
         editExpButton.setOnAction(e -> editExperience());
         vitalsGrid.add(editExpButton, 2, 1);
 
-        // HP
-        hpValueLabel = createVitalsStatValue(String.valueOf(character.getHitPoints()));
+        // HP (Current / Max - Editable)
+        hpValueLabel = createVitalsStatValue(character.getCurrentHitPoints() + " / " + character.getMaxHitPoints());
         vitalsGrid.add(createVitalsStatLabel("HP"), 0, 2);
         vitalsGrid.add(hpValueLabel, 1, 2);
+        Button editHpButton = new Button("Edit");
+        editHpButton.setStyle("-fx-padding: 2 5; -fx-font-size: 10px; -fx-cursor: hand; -fx-background-color: " + ACCENT_BLUE + "; -fx-text-fill: white; -fx-border-radius: 3; -fx-font-weight: bold;");
+        editHpButton.setOnAction(e -> editCurrentHitPoints());
+        vitalsGrid.add(editHpButton, 2, 2);
 
-        // AC
+        // AC (Editable Override)
         acValueLabel = createVitalsStatValue(String.valueOf(character.getArmorClass()));
         vitalsGrid.add(createVitalsStatLabel("AC"), 0, 3);
         vitalsGrid.add(acValueLabel, 1, 3);
+        Button editAcButton = new Button("Edit");
+        editAcButton.setStyle("-fx-padding: 2 5; -fx-font-size: 10px; -fx-cursor: hand; -fx-background-color: " + ACCENT_BLUE + "; -fx-text-fill: white; -fx-border-radius: 3; -fx-font-weight: bold;");
+        editAcButton.setOnAction(e -> editArmorClass());
+        vitalsGrid.add(editAcButton, 2, 3);
 
-        // Speed
-        speedValueLabel = createVitalsStatValue(String.valueOf(character.getSpeed()));
+        // Speed (Editable Override)
+        speedValueLabel = createVitalsStatValue(character.getSpeed() + " ft");
         vitalsGrid.add(createVitalsStatLabel("Speed"), 0, 4);
         vitalsGrid.add(speedValueLabel, 1, 4);
+        Button editSpeedButton = new Button("Edit");
+        editSpeedButton.setStyle("-fx-padding: 2 5; -fx-font-size: 10px; -fx-cursor: hand; -fx-background-color: " + ACCENT_BLUE + "; -fx-text-fill: white; -fx-border-radius: 3; -fx-font-weight: bold;");
+        editSpeedButton.setOnAction(e -> editSpeed());
+        vitalsGrid.add(editSpeedButton, 2, 4);
 
-        // Hit Dice
+        // Hit Dice (Editable Override)
         hitDiceValueLabel = createVitalsStatValue(character.getHitDice());
         vitalsGrid.add(createVitalsStatLabel("Hit Dice"), 0, 5);
         vitalsGrid.add(hitDiceValueLabel, 1, 5);
+        Button editHdButton = new Button("Edit");
+        editHdButton.setStyle("-fx-padding: 2 5; -fx-font-size: 10px; -fx-cursor: hand; -fx-background-color: " + ACCENT_BLUE + "; -fx-text-fill: white; -fx-border-radius: 3; -fx-font-weight: bold;");
+        editHdButton.setOnAction(e -> editHitDice());
+        vitalsGrid.add(editHdButton, 2, 5);
+
 
         vitals.getChildren().add(vitalsGrid);
         return vitals;
     }
+
+    // NEW: Edit Current Hit Points logic
+    private void editCurrentHitPoints() {
+        TextInputDialog dialog = new TextInputDialog(String.valueOf(character.getCurrentHitPoints()));
+        dialog.setTitle("Edit Current Hit Points");
+        dialog.setHeaderText("Enter the character's current HP (Max: " + character.getMaxHitPoints() + "):");
+        dialog.setContentText("Current HP:");
+
+        Optional<String> result = dialog.showAndWait();
+        result.ifPresent(hpString -> {
+            try {
+                int newHP = Integer.parseInt(hpString);
+                // Clamp to prevent HP > MaxHP or HP < 0
+                newHP = Math.max(0, Math.min(newHP, character.getMaxHitPoints()));
+
+                character.setCurrentHitPoints(newHP);
+                CharacterFileManager.saveCharacter(character);
+                updateVitalsDisplay();
+            } catch (NumberFormatException e) {
+                Alert error = new Alert(Alert.AlertType.ERROR, "Invalid number entered for HP.");
+                error.showAndWait();
+            }
+        });
+    }
+
+    // NEW: Edit Armor Class logic
+    private void editArmorClass() {
+        TextInputDialog dialog = new TextInputDialog(String.valueOf(character.getArmorClass()));
+        dialog.setTitle("Edit Armor Class (Override)");
+        dialog.setHeaderText("Enter a new AC value to override the calculated value. Leave empty to use default (base " + (10 + (character.getAbilityScores().getOrDefault("DEX", 10) - 10) / 2) + ").");
+        dialog.setContentText("Armor Class:");
+
+        Optional<String> result = dialog.showAndWait();
+        result.ifPresent(acString -> {
+            try {
+                if (acString.trim().isEmpty()) {
+                    character.setArmorClassOverride(null); // Remove override
+                } else {
+                    int newAC = Integer.parseInt(acString);
+                    if (newAC < 0) throw new NumberFormatException();
+                    character.setArmorClassOverride(newAC);
+                }
+                CharacterFileManager.saveCharacter(character);
+                updateVitalsDisplay();
+            } catch (NumberFormatException e) {
+                Alert error = new Alert(Alert.AlertType.ERROR, "Invalid number entered for AC.");
+                error.showAndWait();
+            }
+        });
+    }
+
+    // NEW: Edit Speed logic
+    private void editSpeed() {
+        TextInputDialog dialog = new TextInputDialog(String.valueOf(character.getSpeed()));
+        dialog.setTitle("Edit Speed (Override)");
+        dialog.setHeaderText("Enter a new Speed value to override the calculated value. Leave empty to use default (" + speciesBaseSpeed.getOrDefault(character.getSelectedSpecies(), 30) + " ft).");
+        dialog.setContentText("Speed (ft):");
+
+        Optional<String> result = dialog.showAndWait();
+        result.ifPresent(speedString -> {
+            try {
+                if (speedString.trim().isEmpty()) {
+                    character.setSpeedOverride(null); // Remove override
+                } else {
+                    int newSpeed = Integer.parseInt(speedString);
+                    if (newSpeed < 0) throw new NumberFormatException();
+                    character.setSpeedOverride(newSpeed);
+                }
+                CharacterFileManager.saveCharacter(character);
+                updateVitalsDisplay();
+            } catch (NumberFormatException e) {
+                Alert error = new Alert(Alert.AlertType.ERROR, "Invalid number entered for Speed.");
+                error.showAndWait();
+            }
+        });
+    }
+
+    // NEW: Edit Hit Dice logic
+    private void editHitDice() {
+        TextInputDialog dialog = new TextInputDialog(character.getHitDice());
+        dialog.setTitle("Edit Hit Dice (Override)");
+        dialog.setHeaderText("Enter a custom Hit Dice string (e.g., 5d10). Leave empty to use default (base " + character.getLevel() + classHitDice.getOrDefault(character.getSelectedClass(), 6) + ").");
+        dialog.setContentText("Hit Dice:");
+
+        Optional<String> result = dialog.showAndWait();
+        result.ifPresent(hdString -> {
+            if (hdString.trim().isEmpty()) {
+                character.setHitDiceOverride(null); // Remove override
+            } else {
+                character.setHitDiceOverride(hdString.trim());
+            }
+            CharacterFileManager.saveCharacter(character);
+            updateVitalsDisplay();
+        });
+    }
+
 
     private void editExperience() {
         TextInputDialog dialog = new TextInputDialog(String.valueOf(character.getExperience()));
@@ -652,6 +807,9 @@ public class CharacterSheetPage {
                     levelUpAlert.setContentText("Check your vitals for updated HP and Hit Dice.");
                     levelUpAlert.showAndWait();
                     updateAbilityScoresSection();
+                    // When max HP changes, initialize current HP to the new max HP
+                    character.setCurrentHitPoints(character.getMaxHitPoints());
+                    updateVitalsDisplay();
                 }
             } catch (NumberFormatException e) {
                 Alert error = new Alert(Alert.AlertType.ERROR, "Invalid number entered for XP.");
@@ -661,24 +819,22 @@ public class CharacterSheetPage {
     }
 
     private Label createVitalsStatLabel(String text) {
-        // ... (Unchanged)
         Label label = new Label(text + ":");
         label.setFont(Font.font("Arial", FontWeight.BOLD, 14));
-        label.setTextFill(Color.web("#adb5bd"));
+        // APPLY ORANGE ACCENT FOR LABELS
+        label.setTextFill(Color.web(ACCENT_ORANGE));
         return label;
     }
 
     private Label createVitalsStatValue(String text) {
-        // ... (Unchanged)
         Label label = new Label(text);
         label.setFont(Font.font("Arial", 14));
-        label.setTextFill(Color.web("#e9ecef"));
+        label.setTextFill(Color.web(TEXT_LIGHT));
         return label;
     }
 
     // Section 4: Ability Scores
     private void updateAbilityScoresSection() {
-        // Find the parent grid and replace the ability scores section
         for (Map.Entry<String, Label> entry : abilityScoreValueLabels.entrySet()) {
             String ability = entry.getKey();
             Label scoreLabel = entry.getValue();
@@ -718,7 +874,7 @@ public class CharacterSheetPage {
 
             // Add edit button for ability score
             Button editButton = new Button("Edit");
-            editButton.setStyle("-fx-padding: 2 5; -fx-font-size: 10px; -fx-cursor: hand; -fx-background-color: #007BFF; -fx-text-fill: white; -fx-border-radius: 3;");
+            editButton.setStyle("-fx-padding: 2 5; -fx-font-size: 10px; -fx-cursor: hand; -fx-background-color: " + ACCENT_BLUE + "; -fx-text-fill: white; -fx-border-radius: 3; -fx-font-weight: bold;");
             editButton.setOnAction(e -> editAbilityScore(ability, scoreLabel, modifierLabel));
             abilityGrid.add(editButton, 2, row);
 
@@ -759,26 +915,24 @@ public class CharacterSheetPage {
     }
 
     private Label createAbilityScoreLabel(String text) {
-        // ... (Unchanged)
         Label label = new Label(text + ":");
         label.setFont(Font.font("Arial", FontWeight.BOLD, 14));
-        label.setTextFill(Color.web("#adb5bd"));
+        // APPLY ORANGE ACCENT FOR LABELS
+        label.setTextFill(Color.web(ACCENT_ORANGE));
         return label;
     }
 
     private Label createAbilityScoreValue(String text) {
-        // ... (Unchanged)
         Label label = new Label(text);
         label.setFont(Font.font("Arial", FontWeight.BOLD, 14));
-        label.setTextFill(Color.web("#e9ecef"));
+        label.setTextFill(Color.web(TEXT_LIGHT));
         return label;
     }
 
     private Label createAbilityModifierValue(String text) {
-        // ... (Unchanged)
         Label label = new Label(text);
         label.setFont(Font.font("Arial", 12));
-        label.setTextFill(Color.web("#e9ecef"));
+        label.setTextFill(Color.web(TEXT_LIGHT));
         return label;
     }
 
@@ -791,8 +945,6 @@ public class CharacterSheetPage {
     }
 
     // New/Updated: Method to update saving throws display based on new ability scores
-    private GridPane savingThrowsGrid; // Declare a field to store the grid
-
     private void updateSavingThrowsSection() {
         if (this.savingThrowsGrid == null) return;
         this.savingThrowsGrid.getChildren().clear();
@@ -806,7 +958,7 @@ public class CharacterSheetPage {
 
             Label label = new Label(text);
             label.setFont(Font.font("Arial", 14));
-            label.setTextFill(Color.web("#e9ecef"));
+            label.setTextFill(Color.web(TEXT_LIGHT));
             this.savingThrowsGrid.add(label, 0, row);
             row++;
         }
@@ -823,14 +975,29 @@ public class CharacterSheetPage {
         skillList.setItems(FXCollections.observableArrayList(placeholderSkills));
         skillList.setPrefHeight(150);
         skillList.setEditable(true);
+        // Style ListView items
+        skillList.setStyle("-fx-control-inner-background: " + FIELD_BG + "; -fx-text-fill: " + TEXT_LIGHT + "; -fx-border-color: " + ACCENT_ORANGE + ";");
+        skillList.setCellFactory(lv -> new ListCell<String>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                setText(item);
+                setTextFill(Color.web(TEXT_LIGHT));
+                setStyle("-fx-background-color: " + FIELD_BG + ";");
+            }
+        });
+
 
         // Control Box for adding new skills
         HBox controlBox = new HBox(10);
         TextField newSkillField = new TextField();
         newSkillField.setPromptText("e.g. History (INT): +3");
-        newSkillField.setStyle("-fx-background-color: #495057; -fx-text-fill: #e9ecef; -fx-prompt-text-fill: #adb5bd; -fx-border-color: #6c757d; -fx-border-width: 1; -fx-border-radius: 5;");
+        // Style TextField for dark theme
+        newSkillField.setStyle("-fx-background-color: " + FIELD_BG + "; -fx-text-fill: " + TEXT_LIGHT + "; -fx-prompt-text-fill: " + TEXT_MUTED + "; -fx-border-color: " + ACCENT_ORANGE + "; -fx-border-width: 1; -fx-border-radius: 5;");
+
         Button addSkillButton = new Button("Add Skill");
-        addSkillButton.setStyle("-fx-padding: 5 10; -fx-font-size: 12px; -fx-cursor: hand; -fx-background-color: #28a745; -fx-text-fill: white;");
+        // Style Add Skill button (Green accent)
+        addSkillButton.setStyle("-fx-padding: 5 10; -fx-font-size: 12px; -fx-cursor: hand; -fx-background-color: #28a745; -fx-text-fill: white; -fx-font-weight: bold;");
         controlBox.getChildren().addAll(newSkillField, addSkillButton);
 
         addSkillButton.setOnAction(e -> {
@@ -899,27 +1066,35 @@ public class CharacterSheetPage {
         );
 
         Separator separator = new Separator();
-        separator.setStyle("-fx-background-color: #6c757d;");
+        // Style separator
+        separator.setStyle("-fx-background-color: " + TEXT_MUTED + ";");
         actionContent.getChildren().add(separator);
 
         // --- Custom Actions List View ---
         Label customTitle = new Label("Custom Actions (Name | Details)");
-        customTitle.setStyle("-fx-text-fill: #adb5bd; -fx-font-weight: bold; -fx-font-size: 14px;");
+        // Style custom title (Orange)
+        customTitle.setStyle("-fx-text-fill: " + ACCENT_ORANGE + "; -fx-font-weight: bold; -fx-font-size: 14px;");
         actionContent.getChildren().add(customTitle);
 
         ListView<String> actionListView = new ListView<>();
         actionListView.setItems(FXCollections.observableArrayList(character.getCustomActions()));
         actionListView.setPrefHeight(120);
+        // Style ListView items
+        actionListView.setStyle("-fx-control-inner-background: " + FIELD_BG + "; -fx-text-fill: " + TEXT_LIGHT + "; -fx-border-color: " + ACCENT_ORANGE + ";");
         actionListView.setCellFactory(lv -> new ListCell<>() {
             @Override
             protected void updateItem(String item, boolean empty) {
                 super.updateItem(item, empty);
                 if (empty || item == null) {
                     setText(null);
+                    setTooltip(null);
+                    setStyle("-fx-background-color: " + FIELD_BG + ";");
                 } else {
                     // Splits the single string "Name | Description" for display
                     String[] parts = item.split(" \\| ", 2);
                     setText(parts[0]);
+                    setTextFill(Color.web(TEXT_LIGHT));
+                    setStyle("-fx-background-color: " + FIELD_BG + ";");
                     if (parts.length > 1) {
                         Tooltip tooltip = new Tooltip(parts[1]);
                         setTooltip(tooltip);
@@ -957,7 +1132,8 @@ public class CharacterSheetPage {
 
         // Add Action Button
         Button addActionButton = new Button("Add New Action");
-        addActionButton.setStyle("-fx-padding: 5 10; -fx-font-size: 12px; -fx-cursor: hand; -fx-background-color: #28a745; -fx-text-fill: white;");
+        // Style Add Action button (Green accent)
+        addActionButton.setStyle("-fx-padding: 5 10; -fx-font-size: 12px; -fx-cursor: hand; -fx-background-color: #28a745; -fx-text-fill: white; -fx-font-weight: bold;");
         addActionButton.setOnAction(e -> addActionDialog(actionListView));
         actionContent.getChildren().add(addActionButton);
 
@@ -966,7 +1142,8 @@ public class CharacterSheetPage {
 
     private Label createAttackRollLabel(String name, int bonus) {
         Label label = new Label(name + ": " + (bonus >= 0 ? "+" : "") + bonus);
-        label.setStyle("-fx-text-fill: #e9ecef; -fx-font-weight: bold; -fx-font-size: 14px;");
+        // Orange text for key action values
+        label.setStyle("-fx-text-fill: " + ACCENT_ORANGE + "; -fx-font-weight: bold; -fx-font-size: 14px;");
         return label;
     }
 
@@ -1010,12 +1187,25 @@ public class CharacterSheetPage {
         descriptionArea.setWrapText(true);
         descriptionArea.setPromptText("Damage, Range, Save DC, etc.");
 
-        grid.add(new Label("Name:"), 0, 0);
+        // Apply dark styling to dialog inputs
+        nameField.setStyle("-fx-background-color: " + FIELD_BG + "; -fx-text-fill: " + TEXT_LIGHT + "; -fx-border-color: " + ACCENT_ORANGE + ";");
+        descriptionArea.setStyle("-fx-control-inner-background: " + FIELD_BG + "; -fx-text-fill: " + TEXT_LIGHT + "; -fx-border-color: " + ACCENT_ORANGE + ";");
+
+        // Ensure dialog labels are visible
+        Label nameLabel = new Label("Name:");
+        nameLabel.setTextFill(Color.web(ACCENT_ORANGE));
+        Label detailsLabel = new Label("Details:");
+        detailsLabel.setTextFill(Color.web(ACCENT_ORANGE));
+
+        grid.add(nameLabel, 0, 0);
         grid.add(nameField, 1, 0);
-        grid.add(new Label("Details:"), 0, 1);
+        grid.add(detailsLabel, 0, 1);
         grid.add(descriptionArea, 1, 1);
 
         dialog.getDialogPane().setContent(grid);
+        // Set dialog pane style
+        dialog.getDialogPane().setStyle("-fx-background-color: " + SECTION_BG_DARK + ";");
+
 
         dialog.setResultConverter(dialogButton -> {
             if (dialogButton == buttonType && !nameField.getText().trim().isEmpty()) {
@@ -1037,6 +1227,9 @@ public class CharacterSheetPage {
         ListView<String> traitListView = new ListView<>();
         traitListView.setItems(FXCollections.observableArrayList(character.getFeaturesAndTraits()));
         traitListView.setPrefHeight(200);
+        // Style ListView items
+        traitListView.setStyle("-fx-control-inner-background: " + FIELD_BG + "; -fx-text-fill: " + TEXT_LIGHT + "; -fx-border-color: " + ACCENT_ORANGE + ";");
+
 
         // Custom Cell Factory to split the single string "Name | Description" for display
         traitListView.setCellFactory(lv -> new ListCell<>() {
@@ -1045,12 +1238,16 @@ public class CharacterSheetPage {
             private final Label descriptionLabel = new Label();
 
             {
+                // Orange for the Feature Name
                 nameLabel.setFont(Font.font("Arial", FontWeight.BOLD, 14));
-                nameLabel.setTextFill(Color.web("#e9ecef"));
+                nameLabel.setTextFill(Color.web(ACCENT_ORANGE));
+                // Light text for the description
                 descriptionLabel.setFont(Font.font("Arial", 12));
-                descriptionLabel.setTextFill(Color.web("#adb5bd"));
+                descriptionLabel.setTextFill(Color.web(TEXT_LIGHT));
                 descriptionLabel.setWrapText(true);
                 container.getChildren().addAll(nameLabel, descriptionLabel);
+                // Dark background for the cell
+                setStyle("-fx-background-color: " + FIELD_BG + ";");
             }
 
             @Override
@@ -1059,12 +1256,14 @@ public class CharacterSheetPage {
                 if (empty || item == null) {
                     setGraphic(null);
                     setText(null);
+                    setStyle("-fx-background-color: " + FIELD_BG + ";");
                 } else {
                     String[] parts = item.split(" \\| ", 2);
                     nameLabel.setText(parts[0]);
                     descriptionLabel.setText(parts.length > 1 ? parts[1] : "No Description");
                     setGraphic(container);
                     setText(null);
+                    setStyle("-fx-background-color: " + FIELD_BG + ";");
                 }
             }
         });
@@ -1097,7 +1296,8 @@ public class CharacterSheetPage {
 
         // Add Feature/Trait Button
         Button addTraitButton = new Button("Add New Feature/Trait");
-        addTraitButton.setStyle("-fx-padding: 5 10; -fx-font-size: 12px; -fx-cursor: hand; -fx-background-color: #28a745; -fx-text-fill: white;");
+        // Style Add Feature/Trait button (Green accent)
+        addTraitButton.setStyle("-fx-padding: 5 10; -fx-font-size: 12px; -fx-cursor: hand; -fx-background-color: #28a745; -fx-text-fill: white; -fx-font-weight: bold;");
         addTraitButton.setOnAction(e -> addFeatureTraitDialog(traitListView));
 
         this.featuresSectionVBox.getChildren().addAll(traitListView, addTraitButton);
@@ -1146,12 +1346,25 @@ public class CharacterSheetPage {
         descriptionArea.setPrefHeight(100);
         descriptionArea.setPromptText("Detailed description of the feature or trait.");
 
-        grid.add(new Label("Name:"), 0, 0);
+        // Apply dark styling to dialog inputs
+        nameField.setStyle("-fx-background-color: " + FIELD_BG + "; -fx-text-fill: " + TEXT_LIGHT + "; -fx-border-color: " + ACCENT_ORANGE + ";");
+        descriptionArea.setStyle("-fx-control-inner-background: " + FIELD_BG + "; -fx-text-fill: " + TEXT_LIGHT + "; -fx-border-color: " + ACCENT_ORANGE + ";");
+
+        // Ensure dialog labels are visible
+        Label nameLabel = new Label("Name:");
+        nameLabel.setTextFill(Color.web(ACCENT_ORANGE));
+        Label descriptionLabel = new Label("Description:");
+        descriptionLabel.setTextFill(Color.web(ACCENT_ORANGE));
+
+        grid.add(nameLabel, 0, 0);
         grid.add(nameField, 1, 0);
-        grid.add(new Label("Description:"), 0, 1);
+        grid.add(descriptionLabel, 0, 1);
         grid.add(descriptionArea, 1, 1);
 
         dialog.getDialogPane().setContent(grid);
+        // Set dialog pane style
+        dialog.getDialogPane().setStyle("-fx-background-color: " + SECTION_BG_DARK + ";");
+
 
         dialog.setResultConverter(dialogButton -> {
             if (dialogButton == buttonType && !nameField.getText().trim().isEmpty()) {
@@ -1162,7 +1375,8 @@ public class CharacterSheetPage {
         });
         return dialog;
     }
-    // ... (Spell methods are unchanged for brevity)
+
+    // Spell methods (unchanged)
     private void loadAvailableSpells() {
         String classFolder = character.getSelectedClass();
         Path classPath = new File(System.getProperty("user.dir") + File.separator + "src" + File.separator + "main" + File.separator + "resources" + File.separator + "Classes" + File.separator + classFolder).toPath();
@@ -1195,9 +1409,11 @@ public class CharacterSheetPage {
 
         Label playerSpellsTitle = new Label("Known Spells");
         playerSpellsTitle.setFont(Font.font("Arial", FontWeight.BOLD, 16));
-        playerSpellsTitle.setTextFill(Color.web("#e9ecef"));
+        playerSpellsTitle.setTextFill(Color.web(ACCENT_ORANGE)); // Orange
         ListView<String> knownSpellsList = new ListView<>();
         knownSpellsList.setPrefHeight(200);
+        knownSpellsList.setStyle("-fx-control-inner-background: " + FIELD_BG + "; -fx-text-fill: " + TEXT_LIGHT + "; -fx-border-color: " + ACCENT_ORANGE + ";");
+
 
         final Map<Integer, List<String>> knownSpells = character.getKnownSpells() != null ? character.getKnownSpells() : new HashMap<>();
 
@@ -1207,6 +1423,8 @@ public class CharacterSheetPage {
             protected void updateItem(String spell, boolean empty) {
                 super.updateItem(spell, empty);
                 setText(spell);
+                setTextFill(Color.web(TEXT_LIGHT));
+                setStyle("-fx-background-color: " + FIELD_BG + ";");
                 if (empty || spell == null) {
                     setTooltip(null);
                 } else {
@@ -1229,9 +1447,11 @@ public class CharacterSheetPage {
 
         Label availableSpellsTitle = new Label("Available Spells");
         availableSpellsTitle.setFont(Font.font("Arial", FontWeight.BOLD, 16));
-        availableSpellsTitle.setTextFill(Color.web("#e9ecef"));
+        availableSpellsTitle.setTextFill(Color.web(ACCENT_ORANGE)); // Orange
         TabPane spellsTabPane = new TabPane();
         spellsTabPane.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
+        // Spells tab pane styling
+        spellsTabPane.setStyle("-fx-background-color: " + SECTION_BG_DARK + "; -fx-tab-min-height: 25px;");
         spellsTabPane.getStyleClass().add("floating-tab-pane");
 
         for (Map.Entry<Integer, List<String>> entry : availableSpells.entrySet()) {
@@ -1239,6 +1459,17 @@ public class CharacterSheetPage {
             ListView<String> levelSpellList = new ListView<>();
             levelSpellList.getItems().addAll(entry.getValue());
             levelSpellList.getStyleClass().add("available-spell-list");
+            levelSpellList.setStyle("-fx-control-inner-background: " + FIELD_BG + "; -fx-text-fill: " + TEXT_LIGHT + "; -fx-border-color: " + ACCENT_ORANGE + ";");
+            levelSpellList.setCellFactory(lv -> new ListCell<String>() {
+                @Override
+                protected void updateItem(String spell, boolean empty) {
+                    super.updateItem(spell, empty);
+                    setText(spell);
+                    setTextFill(Color.web(TEXT_LIGHT));
+                    setStyle("-fx-background-color: " + FIELD_BG + ";");
+                }
+            });
+
 
             // Double-click to add spell to known spells
             levelSpellList.setOnMouseClicked(event -> {
@@ -1254,11 +1485,13 @@ public class CharacterSheetPage {
             });
 
             Tab tab = new Tab(levelTitle, levelSpellList);
+            tab.setStyle("-fx-background-color: " + FIELD_BG + "; -fx-text-base-color: " + ACCENT_ORANGE + "; -fx-font-weight: bold;"); // Styling the tab header
             spellsTabPane.getTabs().add(tab);
         }
 
         Button addSpellButton = new Button("Add Selected Spell");
-        addSpellButton.setStyle("-fx-padding: 8 16; -fx-font-size: 14px; -fx-cursor: hand; -fx-background-color: #28a745; -fx-text-fill: white;");
+        // Style Add Spell button (Green accent)
+        addSpellButton.setStyle("-fx-padding: 8 16; -fx-font-size: 14px; -fx-cursor: hand; -fx-background-color: #28a745; -fx-text-fill: white; -fx-font-weight: bold;");
         addSpellButton.setOnAction(e -> {
             Tab selectedTab = spellsTabPane.getSelectionModel().getSelectedItem();
             if (selectedTab != null) {
