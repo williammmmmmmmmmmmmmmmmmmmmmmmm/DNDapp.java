@@ -95,7 +95,18 @@ public class GameServer extends WebSocketServer {
                     handleChatMessage(conn, roomName, passwordOrMessage);
                     break;
                 case "MOVE":
-                    // Handle movement here
+                    // FIX: Broadcast the move command to all players in the room
+                    Room room = ROOMS.get(roomName);
+                    if (room != null) {
+                        String playerAddress = conn.getRemoteSocketAddress().toString();
+
+                        // Reconstruct the exact log line that the client's PlayerMapViewerPage.handleRoomMessage
+                        // method is designed to parse. This is crucial for movement to work.
+                        String logMessageToBroadcast = "INFO: Message received from " + playerAddress + ": " + message;
+
+                        // Broadcast the message to all players in the room
+                        broadcastMessage(room, logMessageToBroadcast);
+                    }
                     break;
             }
         } catch (Exception e) {
