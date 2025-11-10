@@ -169,6 +169,11 @@ public class CampaignsPage {
                 // Update the currentRoom variable when a successful join message is received
                 this.currentRoom = message.substring(message.lastIndexOf(":") + 1);
                 addMessage(message.substring("SUCCESS:".length()), Color.web("#80ff80"));
+            } else if (message.contains("MOVE:")) {
+                // NEW: Filter out MOVE messages so they don't appear in the chat log.
+                // The message is still received by this handler, allowing other parts
+                // of the application (like PlayerMapViewerPage) to handle it if active.
+                return;
             } else {
                 addMessage(message, Color.web("#d3d3d3"));
             }
