@@ -102,11 +102,15 @@ public class PlayerMapViewerPage {
         // NEW: Set the current page as the WebSocket message handler
         if (webSocketService != null) {
             webSocketService.setOnMessageReceived(this::handleRoomMessage);
+            // NEW: Send initial move command to announce player presence
+            if (currentRoom != null) {
+                sendMoveCommand();
+            }
         }
     }
 
     /**
-     * NEW: Restores the previous WebSocket message handler and navigates back.
+     * Restores the previous WebSocket message handler and navigates back.
      */
     private void handleGoBack() {
         if (webSocketService != null && previousMessageHandler != null) {
@@ -133,7 +137,6 @@ public class PlayerMapViewerPage {
 
         Button backButton = new Button("Go Back");
         backButton.setStyle("-fx-padding: 12 24; -fx-font-size: 16px; -fx-cursor: hand; -fx-border-radius: 8px; -fx-background-color: #007bff; -fx-text-fill: white; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.5), 10, 0, 0, 0);");
-        // UPDATED: Use the new handler to manage WebSocket delegate
         backButton.setOnAction(e -> handleGoBack());
 
         VBox fogControls = new VBox(5);
@@ -207,9 +210,8 @@ public class PlayerMapViewerPage {
         mapCanvas.setOnMousePressed(e -> {
             // Check if DOOM mode is active before handling the click
             if (isDoomModeActive) {
-                // Pass the button type (e.getButton() should work if javafx.scene.input.MouseEvent is used)
                 doomEngine.handleMouseClick(e.getButton());
-                e.consume(); // Consume the event so map logic is skipped
+                e.consume();
                 return;
             }
 
@@ -221,12 +223,12 @@ public class PlayerMapViewerPage {
                 playerHexR = hex[1];
                 updateRevealedTiles();
                 drawMap();
-                sendMoveCommand(); // NEW: Send move to server
+                sendMoveCommand(); // Send move to server
             }
         });
 
         fogTypeGroup.selectedToggleProperty().addListener((observable, oldValue, newValue) -> {
-            if (isDoomModeActive) return; // Ignore changes in doom mode
+            if (isDoomModeActive) return;
 
             if (newValue != null) {
                 if ("Fog".equals(((RadioButton) newValue).getText())) {
@@ -241,7 +243,7 @@ public class PlayerMapViewerPage {
             }
         });
         fogStrengthSlider.valueProperty().addListener((observable, oldValue, newValue) -> {
-            if (isDoomModeActive) return; // Ignore changes in doom mode
+            if (isDoomModeActive) return;
 
             updateRevealedTiles();
             drawMap();
@@ -257,13 +259,12 @@ public class PlayerMapViewerPage {
             // Check for the DOOM key combination and toggle the mode
             if (doomKeyCombo.match(e)) {
                 toggleDoomMode();
-                e.consume(); // Consume the event
+                e.consume();
                 return;
             }
 
             // --- Key Handling ---
             if (isDoomModeActive) {
-                // Route key presses to the external DOOM engine for game control
                 doomEngine.handleKeyPress(e.getCode());
                 return;
             }
@@ -287,13 +288,12 @@ public class PlayerMapViewerPage {
                 playerHexR = newR;
                 updateRevealedTiles();
                 drawMap();
-                sendMoveCommand(); // NEW: Send move to server
+                sendMoveCommand(); // Send move to server
             }
         });
 
         scene.setOnKeyReleased(e -> {
             if (isDoomModeActive) {
-                // Route key releases to the external DOOM engine
                 doomEngine.handleKeyRelease(e.getCode());
             }
         });
@@ -329,19 +329,26 @@ public class PlayerMapViewerPage {
      * The game loop wrapper. Calls the external DoomEngine for logic and rendering.
      */
     private void runDoomFrame(long now) {
-        // Call the external DOOM engine's update logic
-        doomEngine.update(now);
+        if (lastFrameTime == 0) {
+            lastFrameTime = now;
+            return;
+        }
 
-        // Call the external DOOM engine's rendering logic
-        doomEngine.render(
-                mapCanvas.getGraphicsContext2D(),
-                mapCanvas.getWidth(),
-                mapCanvas.getHeight()
-        );
+        double delta = (now - lastFrameTime) / 1_000_000_000.0;
+        lastFrameTime = now;
+
+        GraphicsContext gc = mapCanvas.getGraphicsContext2D();
+
+        // 1. Update the engine state
+        doomEngine.update((long) delta);
+
+        // 2. Render the new frame to the canvas
+        // This method assumes DoomEngine has a method that draws its current state
+        doomEngine.render(gc, mapCanvas.getWidth(), mapCanvas.getHeight());
     }
 
     /**
-     * NEW: Sends the player's current hex position to the server.
+     * Sends the player's current hex position to the server.
      * Message format: MOVE:roomName:q,r
      */
     private void sendMoveCommand() {
@@ -353,60 +360,62 @@ public class PlayerMapViewerPage {
     }
 
     /**
-     * NEW: Handles WebSocket messages relevant to the map/room.
-     * Processes PLAYER_MOVE, PLAYER_LIST, and PLAYER_LEFT messages.
+     * Handles WebSocket messages relevant to the map/room by parsing the required server log format.
      */
     private void handleRoomMessage(String message) {
         Platform.runLater(() -> {
-            if (message.startsWith("PLAYER_MOVE:")) {
-                // Format: PLAYER_MOVE:address:q:r
+            boolean mapUpdateNeeded = false;
+            String playerAddress = null;
+
+            // 1. Parse the MOVE message based on the required server log format.
+            // Expected format (as client message payload): INFO: Message received from /[address]:port: MOVE:roomName:q,r
+            if (message.startsWith("INFO: Message received from /")) {
                 try {
-                    String[] parts = message.substring("PLAYER_MOVE:".length()).split(":", 3);
-                    String address = parts[0];
-                    int q = Integer.parseInt(parts[1]);
-                    int r = Integer.parseInt(parts[2]);
+                    String[] parts = message.split(": ");
 
-                    // Update the position of the other player
-                    otherPlayers.put(address, new int[]{q, r});
-                    drawMap();
-                } catch (Exception e) {
-                    // Ignore malformed message
-                }
-            } else if (message.startsWith("PLAYER_LIST:")) {
-                // Format: PLAYER_LIST:address1:q1,r1|address2:q2,r2|...
-                otherPlayers.clear();
-                String data = message.substring("PLAYER_LIST:".length());
-                if (!data.isEmpty()) {
-                    String[] playerEntries = data.split("\\|");
-                    for (String entry : playerEntries) {
-                        try {
-                            String[] parts = entry.split(":");
-                            if (parts.length == 2) {
-                                String address = parts[0];
-                                String[] coords = parts[1].split(",");
-                                if (coords.length == 2) {
-                                    int q = Integer.parseInt(coords[0]);
-                                    int r = Integer.parseInt(coords[1]);
+                    // We expect at least 3 parts: [0]INFO [1]Message received from /[addr] [2]MOVE:room:q,r
+                    if (parts.length >= 3 && parts[1].startsWith("Message received from /")) {
 
-                                    otherPlayers.put(address, new int[]{q, r});
-                                }
+                        // Extract the full address (e.g., /[0:0:0:0:0:0:0:1]:52674)
+                        String fullAddressPart = parts[1].substring("Message received from ".length());
+                        playerAddress = fullAddressPart;
+
+                        // Extract the move command part (e.g., MOVE:test:51,28)
+                        String moveCommand = parts[2];
+
+                        // Ensure the message is a MOVE command for the current room
+                        if (currentRoom != null && moveCommand.startsWith("MOVE:" + currentRoom + ":")) {
+
+                            // Extract coordinates (e.g., 51,28)
+                            String coordsStr = moveCommand.substring(("MOVE:" + currentRoom + ":").length());
+                            String[] coords = coordsStr.split(",");
+
+                            if (coords.length == 2) {
+                                int q = Integer.parseInt(coords[0]);
+                                int r = Integer.parseInt(coords[1]);
+
+                                // Store or update the player's position
+                                otherPlayers.put(playerAddress, new int[]{q, r});
+                                mapUpdateNeeded = true;
                             }
-                        } catch (Exception e) {
-                            // Ignore malformed player entry
                         }
                     }
-                    drawMap();
+                } catch (Exception e) {
+                    System.err.println("Error parsing MOVE message from server log format: " + message + " - " + e.getMessage());
                 }
-            } else if (message.startsWith("PLAYER_LEFT:")) {
-                // Format: PLAYER_LEFT:address
-                String address = message.substring("PLAYER_LEFT:".length());
-                otherPlayers.remove(address);
-                drawMap();
             } else {
-                // Forward unknown messages back to the previous handler (CampaignsPage)
+                // 2. Forward other known server messages (like CHAT_MESSAGE or ROOMLIST)
+                // This is needed to maintain functionality with CampaignsPage
                 if (previousMessageHandler != null) {
                     previousMessageHandler.accept(message);
                 }
+            }
+
+            if (mapUpdateNeeded) {
+                // Update status and draw map
+                int playerCount = otherPlayers.size();
+                statusLabel.setText((currentRoom != null ? "Room: " + currentRoom : "Map loaded.") + ". Tracking " + playerCount + " remote players.");
+                drawMap();
             }
         });
     }
@@ -440,7 +449,8 @@ public class PlayerMapViewerPage {
                     mapData.getGrid().size() == COL_COUNT * ROW_COUNT) {
                 updateRevealedTiles(); // Initial reveal
                 drawMap();
-                statusLabel.setText("Map loaded successfully.");
+                String status = currentRoom != null ? "Room: " + currentRoom + ". Map loaded successfully." : "Map loaded successfully.";
+                statusLabel.setText(status);
                 statusLabel.setTextFill(Color.web("#d3d3d3"));
             } else {
                 statusLabel.setText("Invalid map file format or size.");
@@ -453,7 +463,6 @@ public class PlayerMapViewerPage {
     }
 
     private void updateRevealedTiles() {
-        // ... (existing implementation)
         String selectedFog = ((RadioButton) fogTypeGroup.getSelectedToggle()).getText();
         int revealRadius = (int) (10 - fogStrengthSlider.getValue());
         if (revealRadius < 0) revealRadius = 0;
@@ -466,12 +475,24 @@ public class PlayerMapViewerPage {
             }
         }
 
-        for (int q = -revealRadius; q <= revealRadius; q++) {
-            for (int r = -revealRadius; r <= revealRadius; r++) {
-                int hexQ = playerHexQ + q;
-                int hexR = playerHexR + r;
-                if (hexQ >= 0 && hexQ < COL_COUNT && hexR >= 0 && hexR < ROW_COUNT) {
-                    revealedTiles[hexQ][hexR] = true;
+        // Only reveal for Fog of War and initial setup
+        if ("Fog of War".equals(selectedFog) || "None".equals(selectedFog)) {
+            // Reset for calculation
+            if ("Fog of War".equals(selectedFog)) {
+                for (int q = 0; q < COL_COUNT; q++) {
+                    for (int r = 0; r < ROW_COUNT; r++) {
+                        revealedTiles[q][r] = false;
+                    }
+                }
+            }
+
+            for (int q = -revealRadius; q <= revealRadius; q++) {
+                for (int r = -revealRadius; r <= revealRadius; r++) {
+                    int hexQ = playerHexQ + q;
+                    int hexR = playerHexR + r;
+                    if (hexQ >= 0 && hexQ < COL_COUNT && hexR >= 0 && hexR < ROW_COUNT) {
+                        revealedTiles[hexQ][hexR] = true;
+                    }
                 }
             }
         }
@@ -480,7 +501,6 @@ public class PlayerMapViewerPage {
     private void drawMap() {
         // Do not draw the map if we are in DOOM mode
         if (isDoomModeActive) {
-            // The AnimationTimer handles the drawing, no need to redraw statically here
             return;
         }
 
@@ -496,12 +516,15 @@ public class PlayerMapViewerPage {
         gc.clearRect(0, 0, mapCanvas.getWidth(), mapCanvas.getHeight());
 
         drawGridAndFog();
-        drawPlayerToken(gc, playerHexQ, playerHexR, Color.web("#ffd700"), Color.web("#8b0000")); // Local Player
+        // Local Player - Pass "You" as the label
+        drawPlayerToken(gc, playerHexQ, playerHexR, Color.web("#ffd700"), Color.web("#8b0000"), "You");
 
         // NEW: Draw all other players
         otherPlayers.forEach((address, pos) -> {
+            // Get the short ID from the address (e.g., "52674" from "...:52674")
+            String shortId = address.substring(address.lastIndexOf(':') + 1);
             // Draw other players with a different color (Green)
-            drawPlayerToken(gc, pos[0], pos[1], Color.web("#00ff7f"), Color.web("#006400"));
+            drawPlayerToken(gc, pos[0], pos[1], Color.web("#00ff7f"), Color.web("#006400"), shortId);
         });
     }
 
@@ -526,7 +549,6 @@ public class PlayerMapViewerPage {
     }
 
     private void drawHex(GraphicsContext gc, int q, int r, Color fill) {
-        // ... (existing implementation)
         double xCenter = HEX_SIZE * 1.5 * q;
         double yCenter = hexHeight * r + hexHeight * (q % 2) / 2;
 
@@ -547,9 +569,9 @@ public class PlayerMapViewerPage {
     }
 
     /**
-     * UPDATED: Unified method to draw any player token (local or remote).
+     * UPDATED: Unified method to draw any player token (local or remote), including a label.
      */
-    private void drawPlayerToken(GraphicsContext gc, int q, int r, Color fill, Color stroke) {
+    private void drawPlayerToken(GraphicsContext gc, int q, int r, Color fill, Color stroke, String label) {
         double xCenter = HEX_SIZE * 1.5 * q;
         double yCenter = hexHeight * r + hexHeight * (q % 2) / 2;
 
@@ -560,5 +582,13 @@ public class PlayerMapViewerPage {
         gc.setStroke(stroke);
         gc.setLineWidth(2);
         gc.strokeOval(xCenter - tokenSize / 2, yCenter - tokenSize / 2, tokenSize, tokenSize);
+
+        // Draw the player label (short identifier)
+        gc.setFill(Color.WHITE);
+        gc.setFont(Font.font("Arial", FontWeight.BOLD, 8));
+
+        // Simple text centering logic
+        double textWidth = label.length() * 4.5;
+        gc.fillText(label, xCenter - textWidth / 2, yCenter + tokenSize / 2 + 5);
     }
 }
