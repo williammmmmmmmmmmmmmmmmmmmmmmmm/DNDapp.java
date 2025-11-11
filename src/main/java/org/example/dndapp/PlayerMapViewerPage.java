@@ -55,6 +55,8 @@ public class PlayerMapViewerPage {
     private ToggleGroup fogTypeGroup;
     private Slider fogStrengthSlider;
     private boolean[][] revealedTiles = new boolean[COL_COUNT][ROW_COUNT];
+    // NEW FOW FIELD: Stores permanently revealed tiles (for "Fog of War" mode)
+    private boolean[][] fowHistory = new boolean[COL_COUNT][ROW_COUNT];
 
     // Added fields for canvas resizing and mode switching
     private double originalCanvasWidth;
@@ -74,7 +76,7 @@ public class PlayerMapViewerPage {
     // Reference to the handler of the previous scene (CampaignsPage)
     private final Consumer<String> previousMessageHandler;
 
-    // --- NEW: ENEMY TOKEN FIELDS ---
+    // NEW: ENEMY TOKEN FIELDS
     // Map of enemy tokens: Token Name -> [q, r]
     private final Map<String, int[]> enemyTokens = new ConcurrentHashMap<>();
     private String nextEnemyName = "Goblin 1";
@@ -331,13 +333,7 @@ public class PlayerMapViewerPage {
             if (isDoomModeActive) return;
 
             if (newValue != null) {
-                if ("Fog".equals(((RadioButton) newValue).getText())) {
-                    for (int q = 0; q < COL_COUNT; q++) {
-                        for (int r = 0; r < ROW_COUNT; r++) {
-                            revealedTiles[q][r] = false;
-                        }
-                    }
-                }
+                // The updated logic in updateRevealedTiles() handles mode switching correctly.
                 updateRevealedTiles();
                 drawMap();
             }
@@ -688,6 +684,15 @@ public class PlayerMapViewerPage {
 
             if (mapData != null && mapData.getGrid() != null &&
                     mapData.getGrid().size() == COL_COUNT * ROW_COUNT) {
+
+                // Initialize FOW and FOW History (Only happens on map load)
+                for (int q = 0; q < COL_COUNT; q++) {
+                    for (int r = 0; r < ROW_COUNT; r++) {
+                        revealedTiles[q][r] = false; // Reset current view
+                        fowHistory[q][r] = false;    // Reset history
+                    }
+                }
+
                 updateRevealedTiles(); // Initial reveal
                 drawMap();
                 String status = currentRoom != null ? "Room: " + currentRoom + ". Map loaded successfully. Press Ctrl+E to add an Enemy Token." : "Map loaded successfully. Press Ctrl+E to add an Enemy Token.";
@@ -708,31 +713,39 @@ public class PlayerMapViewerPage {
         int revealRadius = (int) (10 - fogStrengthSlider.getValue());
         if (revealRadius < 0) revealRadius = 0;
 
+        if ("None".equals(selectedFog)) {
+            // No fog is applied.
+            return;
+        }
+
         if ("Fog".equals(selectedFog)) {
+            // "Fog" (Temporary): Reset all currently revealed tiles to black before calculating radius.
             for (int q = 0; q < COL_COUNT; q++) {
                 for (int r = 0; r < ROW_COUNT; r++) {
                     revealedTiles[q][r] = false;
                 }
             }
+        } else if ("Fog of War".equals(selectedFog)) {
+            // "Fog of War" (Permanent): Start the current view from the FOW history.
+            // Tiles already revealed in history remain revealed in the current view.
+            for (int q = 0; q < COL_COUNT; q++) {
+                // Copy the state of the permanent history into the temporary revealed state
+                System.arraycopy(fowHistory[q], 0, revealedTiles[q], 0, ROW_COUNT);
+            }
         }
 
-        // Only reveal for Fog of War and initial setup
-        if ("Fog of War".equals(selectedFog) || "None".equals(selectedFog)) {
-            // Reset for calculation
-            if ("Fog of War".equals(selectedFog)) {
-                for (int q = 0; q < COL_COUNT; q++) {
-                    for (int r = 0; r < ROW_COUNT; r++) {
-                        revealedTiles[q][r] = false;
-                    }
-                }
-            }
+        // Apply Central Radius Reveal Logic (Applies to Fog and Fog of War)
+        for (int q = -revealRadius; q <= revealRadius; q++) {
+            for (int r = -revealRadius; r <= revealRadius; r++) {
+                int hexQ = playerHexQ + q;
+                int hexR = playerHexR + r;
+                if (hexQ >= 0 && hexQ < COL_COUNT && hexR >= 0 && hexR < ROW_COUNT) {
+                    // Reveal in the current view
+                    revealedTiles[hexQ][hexR] = true;
 
-            for (int q = -revealRadius; q <= revealRadius; q++) {
-                for (int r = -revealRadius; r <= revealRadius; r++) {
-                    int hexQ = playerHexQ + q;
-                    int hexR = playerHexR + r;
-                    if (hexQ >= 0 && hexQ < COL_COUNT && hexR >= 0 && hexR < ROW_COUNT) {
-                        revealedTiles[hexQ][hexR] = true;
+                    // If FOW, also permanently reveal in history
+                    if ("Fog of War".equals(selectedFog)) {
+                        fowHistory[hexQ][hexR] = true;
                     }
                 }
             }
@@ -758,9 +771,18 @@ public class PlayerMapViewerPage {
 
         drawGridAndFog();
 
-        // --- Draw all enemy tokens ---
+        RadioButton selectedRadio = (RadioButton) fogTypeGroup.getSelectedToggle();
+        String selectedFog = (selectedRadio != null) ? selectedRadio.getText() : "None";
+
+        // --- Draw all enemy tokens (only if the tile is revealed or fog is off) ---
         enemyTokens.forEach((name, pos) -> {
-            drawEnemyToken(gc, pos[0], pos[1], name);
+            int q = pos[0];
+            int r = pos[1];
+
+            // Enemy token is only drawn if fog is None OR the tile is currently revealed
+            if ("None".equals(selectedFog) || revealedTiles[q][r]) {
+                drawEnemyToken(gc, pos[0], pos[1], name);
+            }
         });
 
         // Local Player - Pass "You" as the label
@@ -768,10 +790,15 @@ public class PlayerMapViewerPage {
 
         // Draw all other players
         otherPlayers.forEach((address, pos) -> {
-            // Get the short ID from the address (e.g., "52674" from "...:52674")
-            String shortId = address.substring(address.lastIndexOf(':') + 1);
-            // Draw other players with a different color (Green)
-            drawPlayerToken(gc, pos[0], pos[1], Color.web("#00ff7f"), Color.web("#006400"), shortId);
+            int q = pos[0];
+            int r = pos[1];
+            // Player tokens are only drawn if fog is None OR the tile is currently revealed
+            if ("None".equals(selectedFog) || revealedTiles[q][r]) {
+                // Get the short ID from the address (e.g., "52674" from "...:52674")
+                String shortId = address.substring(address.lastIndexOf(':') + 1);
+                // Draw other players with a different color (Green)
+                drawPlayerToken(gc, pos[0], pos[1], Color.web("#00ff7f"), Color.web("#006400"), shortId);
+            }
         });
     }
 
@@ -787,6 +814,8 @@ public class PlayerMapViewerPage {
                     Color color = Color.web(mapData.getGrid().get(index));
                     drawHex(gc, q, r, color);
 
+                    // Draw the black fog overlay if the selected mode is not "None"
+                    // AND the tile is not currently in the revealedTiles array.
                     if (!"None".equals(selectedFog) && !revealedTiles[q][r]) {
                         drawHex(gc, q, r, Color.web("black"));
                     }
