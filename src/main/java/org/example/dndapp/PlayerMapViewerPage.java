@@ -127,6 +127,41 @@ public class PlayerMapViewerPage {
         primaryStage.setScene(mapsScene);
     }
 
+    /**
+     * Disconnects the current WebSocket and immediately attempts to reconnect,
+     * then re-sends the player's position to re-register with the room.
+     */
+    private void handleReconnect() {
+        if (webSocketService == null || currentRoom == null) {
+            Platform.runLater(() -> statusLabel.setText("Cannot reconnect: Not in a room or WebSocket service is unavailable."));
+            return;
+        }
+
+        // 1. Disconnect current session
+        webSocketService.disconnect();
+        Platform.runLater(() -> statusLabel.setText("Disconnected. Attempting to reconnect..."));
+
+        // 2. Connect (non-blocking)
+        webSocketService.connect();
+
+        // 3. Schedule a move command after a small delay (e.g., 500ms) to re-register with the room.
+        new Thread(() -> {
+            try {
+                // Wait for the connection to establish
+                Thread.sleep(500);
+
+                // Re-send the move command to re-register the player in the room
+                Platform.runLater(() -> {
+                    // WebSocketService::sendMessage will handle the connection status check
+                    sendMoveCommand();
+                    statusLabel.setText("Reconnection attempt initiated. Move your token to confirm re-registration.");
+                });
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }).start();
+    }
+
     public Scene createScene() {
         VBox mainContent = new VBox(20);
         mainContent.setAlignment(Pos.TOP_CENTER);
@@ -145,6 +180,12 @@ public class PlayerMapViewerPage {
         Button backButton = new Button("Go Back");
         backButton.setStyle("-fx-padding: 12 24; -fx-font-size: 16px; -fx-cursor: hand; -fx-border-radius: 8px; -fx-background-color: #007bff; -fx-text-fill: white; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.5), 10, 0, 0, 0);");
         backButton.setOnAction(e -> handleGoBack());
+
+        // --- RECONNECT BUTTON ---
+        Button reconnectButton = new Button("Reconnect");
+        reconnectButton.setStyle("-fx-padding: 12 24; -fx-font-size: 16px; -fx-cursor: hand; -fx-border-radius: 8px; -fx-background-color: #ffaa00; -fx-text-fill: black; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.5), 10, 0, 0, 0);");
+        reconnectButton.setOnAction(e -> handleReconnect());
+        // --- END RECONNECT BUTTON ---
 
         VBox fogControls = new VBox(5);
         fogControls.setAlignment(Pos.CENTER_LEFT);
@@ -178,7 +219,8 @@ public class PlayerMapViewerPage {
         statusLabel.setTextFill(Color.web("#d3d3d3"));
         statusLabel.setStyle("-fx-font-size: 14px; -fx-font-style: italic; -fx-padding: 10px 0;");
 
-        topControls.getChildren().addAll(backButton, fogControls, strengthControls, statusLabel);
+        // ADDED reconnectButton to topControls
+        topControls.getChildren().addAll(backButton, reconnectButton, fogControls, strengthControls, statusLabel);
 
         // Initialize canvas and save original dimensions
         originalCanvasWidth = (COL_COUNT * 1.5 + 0.5) * HEX_SIZE;
@@ -716,7 +758,7 @@ public class PlayerMapViewerPage {
 
         drawGridAndFog();
 
-        // --- NEW: Draw all enemy tokens ---
+        // --- Draw all enemy tokens ---
         enemyTokens.forEach((name, pos) -> {
             drawEnemyToken(gc, pos[0], pos[1], name);
         });
@@ -724,7 +766,7 @@ public class PlayerMapViewerPage {
         // Local Player - Pass "You" as the label
         drawPlayerToken(gc, playerHexQ, playerHexR, Color.web("#ffd700"), Color.web("#8b0000"), "You");
 
-        // NEW: Draw all other players
+        // Draw all other players
         otherPlayers.forEach((address, pos) -> {
             // Get the short ID from the address (e.g., "52674" from "...:52674")
             String shortId = address.substring(address.lastIndexOf(':') + 1);
