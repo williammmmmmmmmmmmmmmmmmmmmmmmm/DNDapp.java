@@ -553,12 +553,14 @@ public class PlayerMapViewerPage {
             } else if (message.startsWith("CHAT_MESSAGE:")) { // --- NEW CHAT/ENEMY LOGIC ---
                 try {
                     // Message format: CHAT_MESSAGE:[sender_address]:[payload]
-                    // We use index search because sender_address may contain colons (e.g., IPv6)
                     String content = message.substring("CHAT_MESSAGE:".length());
-                    int senderEnd = content.indexOf(':'); // Find the colon separating sender address and payload
 
-                    if (senderEnd != -1) {
-                        String payload = content.substring(senderEnd + 1);
+                    // FIX: Use lastIndexOf to reliably find the colon separating the address
+                    // (which may contain colons) from the payload (which uses |)
+                    int payloadStart = content.lastIndexOf(':');
+
+                    if (payloadStart != -1) {
+                        String payload = content.substring(payloadStart + 1);
 
                         if (payload.startsWith("ENEMY_UPDATE|")) {
                             // Payload format: ENEMY_UPDATE|ACTION|Name|q,r
