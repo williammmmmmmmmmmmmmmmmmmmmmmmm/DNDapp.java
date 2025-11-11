@@ -13,6 +13,7 @@ import javafx.scene.control.*;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyCodeCombination;
 import javafx.scene.input.KeyCombination;
+import javafx.scene.input.MouseButton;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
@@ -72,6 +73,12 @@ public class PlayerMapViewerPage {
     private final Map<String, int[]> otherPlayers = new ConcurrentHashMap<>();
     // Reference to the handler of the previous scene (CampaignsPage)
     private final Consumer<String> previousMessageHandler;
+
+    // --- NEW: ENEMY TOKEN FIELDS ---
+    // Map of enemy tokens: Token Name -> [q, r]
+    private final Map<String, int[]> enemyTokens = new ConcurrentHashMap<>();
+    private String nextEnemyName = "Goblin 1";
+    private ContextMenu enemyContextMenu;
 
 
     public PlayerMapViewerPage(Stage primaryStage, Scene mapsScene, String mapFileName,
@@ -167,7 +174,7 @@ public class PlayerMapViewerPage {
         fogStrengthSlider = new Slider(0, 10, 5);
         strengthControls.getChildren().addAll(strengthLabel, fogStrengthSlider);
 
-        statusLabel = new Label("Loading map...");
+        statusLabel = new Label("Loading map... (Press Ctrl+E to add an Enemy Token)");
         statusLabel.setTextFill(Color.web("#d3d3d3"));
         statusLabel.setStyle("-fx-font-size: 14px; -fx-font-style: italic; -fx-padding: 10px 0;");
 
@@ -215,15 +222,66 @@ public class PlayerMapViewerPage {
                 return;
             }
 
-            // Click to move functionality (original map logic)
             int[] hex = screenToHex(e.getX(), e.getY());
+            boolean isHexValid = hex[0] >= 0 && hex[0] < COL_COUNT && hex[1] >= 0 && hex[1] < ROW_COUNT;
 
-            if (hex[0] >= 0 && hex[0] < COL_COUNT && hex[1] >= 0 && hex[1] < ROW_COUNT) {
-                playerHexQ = hex[0];
-                playerHexR = hex[1];
-                updateRevealedTiles();
-                drawMap();
-                sendMoveCommand(); // Send move to server
+            if (e.getButton() == MouseButton.PRIMARY) {
+                // Primary click for local player movement
+                if (isHexValid) {
+                    playerHexQ = hex[0];
+                    playerHexR = hex[1];
+                    updateRevealedTiles();
+                    drawMap();
+                    sendMoveCommand(); // Send move to server
+                }
+            } else if (e.getButton() == MouseButton.SECONDARY) {
+                // Secondary click for enemy token movement/management
+                if (isHexValid) {
+                    // Show the context menu to select which enemy to move
+                    if (enemyContextMenu == null) {
+                        enemyContextMenu = new ContextMenu();
+                    }
+                    enemyContextMenu.getItems().clear();
+
+                    if (!enemyTokens.isEmpty()) {
+                        // Create menu items for each enemy token
+                        enemyTokens.forEach((name, pos) -> {
+                            // Option to move this enemy to the clicked hex
+                            MenuItem moveItem = new MenuItem("Move " + name + " to (" + hex[0] + ", " + hex[1] + ")");
+                            moveItem.setOnAction(event -> {
+                                // Move the selected enemy
+                                enemyTokens.put(name, new int[]{hex[0], hex[1]});
+                                sendEnemyUpdateCommand("MOVE", name, hex[0], hex[1]);
+                                drawMap();
+                            });
+                            enemyContextMenu.getItems().add(moveItem);
+
+                            // Option to remove this enemy
+                            MenuItem removeItem = new MenuItem("Remove " + name);
+                            removeItem.setOnAction(event -> {
+                                enemyTokens.remove(name);
+                                sendEnemyUpdateCommand("REMOVE", name, 0, 0); // Coords ignored for remove
+                                drawMap();
+                            });
+                            enemyContextMenu.getItems().add(removeItem);
+                            enemyContextMenu.getItems().add(new SeparatorMenuItem()); // Separator
+                        });
+
+                        // Remove the last separator if it exists
+                        if (!enemyContextMenu.getItems().isEmpty() && enemyContextMenu.getItems().get(enemyContextMenu.getItems().size() - 1) instanceof SeparatorMenuItem) {
+                            enemyContextMenu.getItems().remove(enemyContextMenu.getItems().size() - 1);
+                        }
+                    } else {
+                        MenuItem infoItem = new MenuItem("No enemy tokens to move (Press Ctrl+E to add one)");
+                        infoItem.setDisable(true);
+                        enemyContextMenu.getItems().add(infoItem);
+                    }
+
+
+                    if (!enemyContextMenu.getItems().isEmpty()) {
+                        enemyContextMenu.show(mapCanvas, e.getScreenX(), e.getScreenY());
+                    }
+                }
             }
         });
 
@@ -269,6 +327,13 @@ public class PlayerMapViewerPage {
                 return;
             }
 
+            // NEW: Add Enemy Token on Ctrl + E
+            if (e.getCode() == KeyCode.E && e.isControlDown()) {
+                showAddEnemyDialog();
+                e.consume();
+                return;
+            }
+
             // Map Movement Logic (only runs if not in DOOM mode)
             int newQ = playerHexQ;
             int newR = playerHexR;
@@ -298,6 +363,72 @@ public class PlayerMapViewerPage {
             }
         });
     }
+
+    /**
+     * Prompts the user to name a new enemy token and adds it to the map at the player's current location.
+     */
+    private void showAddEnemyDialog() {
+        Dialog<String> dialog = new Dialog<>();
+        dialog.setTitle("Add New Enemy Token (Ctrl+E)");
+        dialog.setHeaderText("Enter a name for the new enemy token. It will be placed at your current location.");
+
+        // Set the button types
+        ButtonType addButtonType = new ButtonType("Add", ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(addButtonType, ButtonType.CANCEL);
+
+        // Create the enemy name field
+        TextField nameField = new TextField(nextEnemyName);
+        nameField.setPromptText("Enemy Name");
+
+        VBox content = new VBox(10, nameField);
+        dialog.getDialogPane().setContent(content);
+
+        // Convert the result to a name when the Add button is clicked
+        Platform.runLater(nameField::requestFocus);
+        dialog.setResultConverter(dialogButton -> {
+            if (dialogButton == addButtonType) {
+                return nameField.getText().trim();
+            }
+            return null;
+        });
+
+        dialog.showAndWait().ifPresent(name -> {
+            if (!name.isEmpty()) {
+                // Ensure the name is unique (simple uniqueness check)
+                String uniqueName = name;
+                int suffix = 1;
+                while (enemyTokens.containsKey(uniqueName)) {
+                    // Try to make the name unique by appending a number
+                    uniqueName = name + " " + suffix++;
+                }
+
+                // 1. Add the new enemy at the local player's current position (local update)
+                int q = playerHexQ;
+                int r = playerHexR;
+                enemyTokens.put(uniqueName, new int[]{q, r});
+
+                // 2. Send update to other players (and self, as the command will bounce)
+                sendEnemyUpdateCommand("ADD", uniqueName, q, r);
+
+                // Update the suggestion for the next enemy
+                try {
+                    // Try to increment the number in the name for the next suggestion
+                    String[] parts = uniqueName.split(" ");
+                    int lastIndex = parts.length - 1;
+                    int lastNumber = Integer.parseInt(parts[lastIndex]);
+                    parts[lastIndex] = String.valueOf(lastNumber + 1);
+                    nextEnemyName = String.join(" ", parts);
+                } catch (NumberFormatException ignored) {
+                    // If no number, just suggest a base name + 1
+                    nextEnemyName = uniqueName + " 1";
+                }
+
+                drawMap();
+                statusLabel.setText("Added enemy: " + uniqueName + " at (" + q + ", " + r + ")");
+            }
+        });
+    }
+
 
     private void toggleDoomMode() {
         isDoomModeActive = !isDoomModeActive;
@@ -360,6 +491,22 @@ public class PlayerMapViewerPage {
     }
 
     /**
+     * Sends an enemy token update to the server via the CHAT command, which gets broadcast.
+     * The payload format is: ENEMY_UPDATE|ACTION|Name|q,r
+     * ACTION is ADD, MOVE, or REMOVE.
+     */
+    private void sendEnemyUpdateCommand(String action, String name, int q, int r) {
+        if (webSocketService != null && currentRoom != null) {
+            // Encode the name in case it contains pipes, though simple names are expected
+            String encodedName = name.replace("|", "/");
+            String payload = String.format("ENEMY_UPDATE|%s|%s|%d,%d", action, encodedName, q, r);
+            // Send as a CHAT message to be broadcast by GameServer
+            String message = "CHAT:" + currentRoom + ":" + payload;
+            webSocketService.sendMessage(message);
+        }
+    }
+
+    /**
      * Handles WebSocket messages relevant to the map/room by parsing the required server log format.
      */
     private void handleRoomMessage(String message) {
@@ -403,18 +550,68 @@ public class PlayerMapViewerPage {
                 } catch (Exception e) {
                     System.err.println("Error parsing MOVE message from server log format: " + message + " - " + e.getMessage());
                 }
-            } else {
-                // 2. Forward other known server messages (like CHAT_MESSAGE or ROOMLIST)
-                // This is needed to maintain functionality with CampaignsPage
-                if (previousMessageHandler != null) {
-                    previousMessageHandler.accept(message);
+            } else if (message.startsWith("CHAT_MESSAGE:")) { // --- NEW CHAT/ENEMY LOGIC ---
+                try {
+                    // Message format: CHAT_MESSAGE:[sender_address]:[payload]
+                    // We use index search because sender_address may contain colons (e.g., IPv6)
+                    String content = message.substring("CHAT_MESSAGE:".length());
+                    int senderEnd = content.indexOf(':'); // Find the colon separating sender address and payload
+
+                    if (senderEnd != -1) {
+                        String payload = content.substring(senderEnd + 1);
+
+                        if (payload.startsWith("ENEMY_UPDATE|")) {
+                            // Payload format: ENEMY_UPDATE|ACTION|Name|q,r
+                            String enemyUpdateData = payload.substring("ENEMY_UPDATE|".length());
+                            String[] enemyParts = enemyUpdateData.split("\\|", 3); // ACTION|Name|q,r
+
+                            if (enemyParts.length == 3) {
+                                String action = enemyParts[0];
+                                String encodedName = enemyParts[1];
+                                String name = encodedName.replace("/", "|"); // Decode the name
+                                String coordsStr = enemyParts[2];
+                                String[] coords = coordsStr.split(",");
+                                int q = Integer.parseInt(coords[0]);
+                                int r = Integer.parseInt(coords[1]);
+
+                                switch (action) {
+                                    case "ADD":
+                                    case "MOVE":
+                                        // Update the map regardless of sender (allows bounce)
+                                        enemyTokens.put(name, new int[]{q, r});
+                                        statusLabel.setText("Enemy token processed: " + action + " " + name);
+                                        mapUpdateNeeded = true;
+                                        break;
+                                    case "REMOVE":
+                                        // Update the map regardless of sender (allows bounce)
+                                        enemyTokens.remove(name);
+                                        statusLabel.setText("Enemy token processed: Removed " + name);
+                                        mapUpdateNeeded = true;
+                                        break;
+                                }
+                            }
+                            // Consume the message here, do not forward to previousMessageHandler
+                            // if it was an enemy update
+                            if (mapUpdateNeeded) return;
+                        }
+                    }
+                } catch (Exception e) {
+                    System.err.println("Error parsing CHAT message: " + message + " - " + e.getMessage());
                 }
+                // Fall through to forward if it's a regular chat message
+            }
+
+            // 2. Forward other known server messages (like CHAT_MESSAGE or ROOMLIST)
+            // This is needed to maintain functionality with CampaignsPage
+            if (previousMessageHandler != null) {
+                previousMessageHandler.accept(message);
             }
 
             if (mapUpdateNeeded) {
                 // Update status and draw map
                 int playerCount = otherPlayers.size();
-                statusLabel.setText((currentRoom != null ? "Room: " + currentRoom : "Map loaded.") + ". Tracking " + playerCount + " remote players.");
+                String enemyCount = enemyTokens.isEmpty() ? "" : ". Tracking " + enemyTokens.size() + " enemies.";
+                statusLabel.setText((currentRoom != null ? "Room: " + currentRoom : "Map loaded.") + ". Tracking " + playerCount + " remote players" + enemyCount + ".");
                 drawMap();
             }
         });
@@ -449,7 +646,7 @@ public class PlayerMapViewerPage {
                     mapData.getGrid().size() == COL_COUNT * ROW_COUNT) {
                 updateRevealedTiles(); // Initial reveal
                 drawMap();
-                String status = currentRoom != null ? "Room: " + currentRoom + ". Map loaded successfully." : "Map loaded successfully.";
+                String status = currentRoom != null ? "Room: " + currentRoom + ". Map loaded successfully. Press Ctrl+E to add an Enemy Token." : "Map loaded successfully. Press Ctrl+E to add an Enemy Token.";
                 statusLabel.setText(status);
                 statusLabel.setTextFill(Color.web("#d3d3d3"));
             } else {
@@ -516,6 +713,12 @@ public class PlayerMapViewerPage {
         gc.clearRect(0, 0, mapCanvas.getWidth(), mapCanvas.getHeight());
 
         drawGridAndFog();
+
+        // --- NEW: Draw all enemy tokens ---
+        enemyTokens.forEach((name, pos) -> {
+            drawEnemyToken(gc, pos[0], pos[1], name);
+        });
+
         // Local Player - Pass "You" as the label
         drawPlayerToken(gc, playerHexQ, playerHexR, Color.web("#ffd700"), Color.web("#8b0000"), "You");
 
@@ -566,6 +769,38 @@ public class PlayerMapViewerPage {
         gc.setLineWidth(1);
         gc.fillPolygon(xPoints, yPoints, 6);
         gc.strokePolygon(xPoints, yPoints, 6);
+    }
+
+    /**
+     * Draws an enemy token (a dark red circle with a label) on the map.
+     */
+    private void drawEnemyToken(GraphicsContext gc, int q, int r, String label) {
+        double xCenter = HEX_SIZE * 1.5 * q;
+        double yCenter = hexHeight * r + hexHeight * (q % 2) / 2;
+
+        // Enemy fill color: Dark Red
+        Color fillColor = Color.web("#8B0000");
+        // Enemy border color: Black
+        Color strokeColor = Color.BLACK;
+
+        // Draw the enemy token slightly smaller than player token for distinction
+        double tokenSize = HEX_SIZE * 0.7;
+
+        gc.setFill(fillColor);
+        // Draw a circle for simplicity
+        gc.fillOval(xCenter - tokenSize / 2, yCenter - tokenSize / 2, tokenSize, tokenSize);
+
+        gc.setStroke(strokeColor);
+        gc.setLineWidth(1.5);
+        gc.strokeOval(xCenter - tokenSize / 2, yCenter - tokenSize / 2, tokenSize, tokenSize);
+
+        // Draw the enemy label
+        gc.setFill(Color.WHITE);
+        gc.setFont(Font.font("Arial", FontWeight.BOLD, 8));
+
+        // Simple text centering logic
+        double textWidth = label.length() * 4.5;
+        gc.fillText(label, xCenter - textWidth / 2, yCenter + tokenSize / 2 + 5);
     }
 
     /**
