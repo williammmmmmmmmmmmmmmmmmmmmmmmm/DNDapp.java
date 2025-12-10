@@ -1,7 +1,11 @@
 package org.example.dndapp;
 
+/**
+ * Static class to hold the current player's name across the client application.
+ */
 public class PlayerSession {
-    private static String playerName = "Guest"; // Default name
+    // Default name for unconfigured accounts
+    private static String playerName = "Anonymous";
 
     public static String getPlayerName() {
         return playerName;

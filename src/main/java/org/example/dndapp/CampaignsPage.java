@@ -10,7 +10,7 @@ import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
-import java.util.function.Consumer; // NEW IMPORT
+import java.util.function.Consumer;
 
 public class CampaignsPage {
 
@@ -160,23 +160,75 @@ public class CampaignsPage {
     }
 
     private void handleMessage(String message) {
+        // Steps 1 & 2: Receive and read message
         Platform.runLater(() -> {
-            if (message.startsWith("ROOMLIST:")) {
-                updateRoomList(message.substring("ROOMLIST:".length()));
-            } else if (message.startsWith("ERROR:")) {
-                addMessage(message.substring("ERROR:".length()), Color.web("#ff4c4c"));
-            } else if (message.startsWith("SUCCESS:")) {
-                // Update the currentRoom variable when a successful join message is received
-                this.currentRoom = message.substring(message.lastIndexOf(":") + 1);
-                addMessage(message.substring("SUCCESS:".length()), Color.web("#80ff80"));
-            } else if (message.contains("MOVE:")) {
-                // NEW: Filter out MOVE messages so they don't appear in the chat log.
-                // The message is still received by this handler, allowing other parts
-                // of the application (like PlayerMapViewerPage) to handle it if active.
-                return;
-            } else {
-                addMessage(message, Color.web("#d3d3d3"));
+
+            // Step 3: check for [NAME:
+            if (message.contains("[NAME:")) {
+
+                // --- CUSTOM CHAT PARSING LOGIC (Handles local echo and broadcast) ---
+
+                // Step 4: "delete" (forget) anything before [NAME: in the read message
+                int nameStartIndicator = message.indexOf("[NAME:");
+                int nameStart = nameStartIndicator + "[NAME:".length(); // Start of name (after :)
+
+                // Step 5: continue reading until you find a ]
+                int nameEnd = message.indexOf(']', nameStart);
+
+                if (nameEnd != -1 && nameEnd > nameStart) {
+                    // Step 6: remember everything between [NAME: and ]
+                    String playerName = message.substring(nameStart, nameEnd).trim();
+
+                    // Step 7: continue reading until message ends (from after ])
+                    String actualMessage = message.substring(nameEnd + 1).trim();
+
+                    // Determine color: local echo (usually contains "CHAT:") vs. broadcast (contains "CHAT_MESSAGE:")
+                    // Local echo (you) uses blue, Broadcast uses green.
+                    Color color = message.contains("CHAT_MESSAGE:") ? Color.web("#00ff00") : Color.web("#4c80ff");
+
+                    // Handle the special name synchronization message
+                    if (actualMessage.startsWith("Player joined the room.")) {
+                        addMessage(playerName + " has joined the room.", color);
+                    } else {
+                        // Step 8: turn remembered name into *name*:*message*
+                        addMessage(playerName + ": " + actualMessage, color);
+                    }
+
+                    return; // Message successfully handled (it was a chat message).
+                }
+                // If it contains [NAME: but is malformed, we discard it here by falling through.
             }
+
+            // --- NON-CHAT COMMAND HANDLING ---
+            // We use simple startsWith checks for known commands. No complex log stripping is necessary.
+            String processedMessage = message.trim();
+
+            if (processedMessage.startsWith("ROOMLIST:")) {
+                updateRoomList(processedMessage.substring("ROOMLIST:".length()));
+            } else if (processedMessage.startsWith("ERROR:")) {
+                addMessage(processedMessage.substring("ERROR:".length()), Color.web("#ff4c4c"));
+            } else if (processedMessage.startsWith("SUCCESS:")) {
+                // Update the currentRoom variable when a successful join message is received
+                int lastColonIndex = processedMessage.lastIndexOf(":");
+                if (lastColonIndex != -1) {
+                    String roomName = processedMessage.substring(lastColonIndex + 1);
+                    this.currentRoom = roomName;
+                } else {
+                    this.currentRoom = "UNKNOWN";
+                }
+                addMessage(processedMessage.substring("SUCCESS:".length()).trim(), Color.web("#80ff80"));
+
+                // After successful join, send a CHAT message to sync the local player's name
+                String playerName = PlayerSession.getPlayerName();
+                String syncMessage = "[NAME:" + playerName + "]Player joined the room.";
+                webSocketService.sendMessage("CHAT:" + this.currentRoom + ":" + syncMessage);
+
+            } else if (processedMessage.startsWith("MOVE:") || processedMessage.contains("MOVE:")) {
+                // Filter out MOVE messages
+                return;
+            }
+            // CRITICAL: NO FINAL 'ELSE' BLOCK. Any other message (including messy log headers
+            // that don't contain [NAME:]) is now silently discarded.
         });
     }
 
@@ -200,7 +252,12 @@ public class CampaignsPage {
     private void sendMessage(String command, String roomName, String password) {
         String message = command + ":" + roomName + ":" + password;
         webSocketService.sendMessage(message);
-        addMessage("Sending: " + message, Color.web("#4c80ff"));
+
+        // Adjust display message for JOIN/CREATE
+        String displayMessage = (command.equals("JOIN") || command.equals("CREATE"))
+                ? "Attempting to " + command.toLowerCase() + " room '" + roomName + "' as " + PlayerSession.getPlayerName() + "..."
+                : "Sending: " + message;
+        addMessage(displayMessage, Color.web("#4c80ff"));
     }
 
     private void handleCreateRoom() {
@@ -228,6 +285,7 @@ public class CampaignsPage {
         if (!roomName.isEmpty()) {
             sendMessage("LEAVE", roomName, "");
             addMessage("You have left the room.", Color.web("#ffb366"));
+            this.currentRoom = null; // Clear room state
         } else {
             addMessage("No room to leave. Please enter a room name.", Color.web("#ff4c4c"));
         }
@@ -236,14 +294,20 @@ public class CampaignsPage {
     private void handleSendMessage() {
         String message = messageBox.getText().trim();
         if (!message.isEmpty() && this.currentRoom != null) {
-            // The message is now correctly formatted for the server: CHAT:roomName:message
-            webSocketService.sendMessage("CHAT:" + this.currentRoom + ":" + message);
-            addMessage("You: " + message, Color.web("#4c80ff"));
+            String playerName = PlayerSession.getPlayerName();
+
+            // SHADOW TEXT INJECTION: [NAME:PlayerName]Actual Message
+            String shadowMessage = "[NAME:" + playerName + "]" + message;
+
+            webSocketService.sendMessage("CHAT:" + this.currentRoom + ":" + shadowMessage);
+
+            // CRITICAL: NO local logging. Rely on the server echo being cleanly parsed by handleMessage.
             messageBox.clear();
         } else if (this.currentRoom == null) {
             addMessage("Please join a room before sending a message.", Color.web("#ff4c4c"));
         }
     }
+
 
     // NEW PUBLIC GETTERS to facilitate handing off WebSocket control
     public WebSocketService getWebSocketService() {

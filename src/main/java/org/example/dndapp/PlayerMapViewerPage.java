@@ -517,13 +517,17 @@ public class PlayerMapViewerPage {
     }
 
     /**
-     * Sends the player's current hex position to the server.
-     * Message format: MOVE:roomName:q,r
+     * Sends the player's current hex position and name to the server.
+     * Message format: MOVE:roomName:[NAME:PlayerName]q,r
      */
     private void sendMoveCommand() {
         if (webSocketService != null && currentRoom != null) {
-            // Sends the command that the GameServer needs to handle: MOVE:roomName:q,r
-            String message = "MOVE:" + currentRoom + ":" + playerHexQ + "," + playerHexR;
+            String playerName = PlayerSession.getPlayerName();
+
+            // SHADOW TEXT INJECTION: [NAME:PlayerName]q,r
+            String messageData = "[NAME:" + playerName + "]" + playerHexQ + "," + playerHexR;
+
+            String message = "MOVE:" + currentRoom + ":" + messageData;
             webSocketService.sendMessage(message);
         }
     }
@@ -545,7 +549,8 @@ public class PlayerMapViewerPage {
     }
 
     /**
-     * Handles WebSocket messages relevant to the map/room by parsing the required server log format.
+     * Handles WebSocket messages relevant to the map/room by parsing the required server log format,
+     * including extracting player names from shadow text.
      */
     private void handleRoomMessage(String message) {
         Platform.runLater(() -> {
@@ -553,26 +558,47 @@ public class PlayerMapViewerPage {
             String playerAddress = null;
 
             // 1. Parse the MOVE message based on the required server log format.
-            // Expected format (as client message payload): INFO: Message received from /[address]:port: MOVE:roomName:q,r
+            // Expected format (as client message payload): INFO: Message received from /[address]:port: MOVE:roomName:[NAME:PlayerName]q,r
             if (message.startsWith("INFO: Message received from /")) {
                 try {
                     String[] parts = message.split(": ");
 
-                    // We expect at least 3 parts: [0]INFO [1]Message received from /[addr] [2]MOVE:room:q,r
+                    // We expect at least 3 parts: [0]INFO [1]Message received from /[addr] [2]MOVE:room:[NAME:name]q,r
                     if (parts.length >= 3 && parts[1].startsWith("Message received from /")) {
 
                         // Extract the full address (e.g., /[0:0:0:0:0:0:0:1]:52674)
                         String fullAddressPart = parts[1].substring("Message received from ".length());
                         playerAddress = fullAddressPart;
 
-                        // Extract the move command part (e.g., MOVE:test:51,28)
+                        // Extract the move command part (e.g., MOVE:test:[NAME:John Doe]51,28)
                         String moveCommand = parts[2];
 
                         // Ensure the message is a MOVE command for the current room
                         if (currentRoom != null && moveCommand.startsWith("MOVE:" + currentRoom + ":")) {
 
+                            // Extract the remaining data string (e.g., [NAME:John Doe]51,28)
+                            String fullMoveData = moveCommand.substring(("MOVE:" + currentRoom + ":").length());
+
+                            String remotePlayerName = null;
+                            String coordsStr = fullMoveData;
+
+                            // SHADOW TEXT PROCESSING: Check for [NAME:PlayerName]
+                            if (fullMoveData.startsWith("[NAME:") && fullMoveData.contains("]")) {
+                                int startName = "[NAME:".length();
+                                int endBracket = fullMoveData.indexOf(']');
+
+                                if (endBracket > startName) {
+                                    // Extract the name
+                                    remotePlayerName = fullMoveData.substring(startName, endBracket);
+                                    // The remaining string is the actual server data (q,r)
+                                    coordsStr = fullMoveData.substring(endBracket + 1);
+
+                                    // Register ID->Name mapping (Crucial for later lookups)
+                                    PlayerRegistry.registerPlayer(playerAddress, remotePlayerName);
+                                }
+                            }
+
                             // Extract coordinates (e.g., 51,28)
-                            String coordsStr = moveCommand.substring(("MOVE:" + currentRoom + ":").length());
                             String[] coords = coordsStr.split(",");
 
                             if (coords.length == 2) {
@@ -588,18 +614,19 @@ public class PlayerMapViewerPage {
                 } catch (Exception e) {
                     System.err.println("Error parsing MOVE message from server log format: " + message + " - " + e.getMessage());
                 }
-            } else if (message.startsWith("CHAT_MESSAGE:")) { // --- NEW CHAT/ENEMY LOGIC ---
+            } else if (message.startsWith("CHAT_MESSAGE:")) { // --- CHAT/ENEMY LOGIC ---
                 try {
                     // Message format: CHAT_MESSAGE:[sender_address]:[payload]
                     String content = message.substring("CHAT_MESSAGE:".length());
 
-                    // FIX: Use lastIndexOf to reliably find the colon separating the address
-                    // (which may contain colons) from the payload (which uses |)
-                    int payloadStart = content.lastIndexOf(':');
+                    // Find the separator between sender_address and payload
+                    int payloadStart = content.indexOf(':');
 
                     if (payloadStart != -1) {
+                        // String senderId = content.substring(0, payloadStart); // The server-sent ID
                         String payload = content.substring(payloadStart + 1);
 
+                        // Enemy Update Logic (Existing logic uses CHAT command)
                         if (payload.startsWith("ENEMY_UPDATE|")) {
                             // Payload format: ENEMY_UPDATE|ACTION|Name|q,r
                             String enemyUpdateData = payload.substring("ENEMY_UPDATE|".length());
@@ -617,32 +644,27 @@ public class PlayerMapViewerPage {
                                 switch (action) {
                                     case "ADD":
                                     case "MOVE":
-                                        // Update the map regardless of sender (allows bounce)
                                         enemyTokens.put(name, new int[]{q, r});
                                         statusLabel.setText("Enemy token processed: " + action + " " + name);
                                         mapUpdateNeeded = true;
                                         break;
                                     case "REMOVE":
-                                        // Update the map regardless of sender (allows bounce)
                                         enemyTokens.remove(name);
                                         statusLabel.setText("Enemy token processed: Removed " + name);
                                         mapUpdateNeeded = true;
                                         break;
                                 }
                             }
-                            // Consume the message here, do not forward to previousMessageHandler
-                            // if it was an enemy update
-                            if (mapUpdateNeeded) return;
                         }
+
                     }
                 } catch (Exception e) {
                     System.err.println("Error parsing CHAT message: " + message + " - " + e.getMessage());
                 }
-                // Fall through to forward if it's a regular chat message
+                // Fall through to forward to previousMessageHandler
             }
 
             // 2. Forward other known server messages (like CHAT_MESSAGE or ROOMLIST)
-            // This is needed to maintain functionality with CampaignsPage
             if (previousMessageHandler != null) {
                 previousMessageHandler.accept(message);
             }
@@ -785,8 +807,8 @@ public class PlayerMapViewerPage {
             }
         });
 
-        // Local Player - Pass "You" as the label
-        drawPlayerToken(gc, playerHexQ, playerHexR, Color.web("#ffd700"), Color.web("#8b0000"), "You");
+        // Local Player - Pass the player's actual name as the label
+        drawPlayerToken(gc, playerHexQ, playerHexR, Color.web("#ffd700"), Color.web("#8b0000"), PlayerSession.getPlayerName());
 
         // Draw all other players
         otherPlayers.forEach((address, pos) -> {
@@ -794,10 +816,10 @@ public class PlayerMapViewerPage {
             int r = pos[1];
             // Player tokens are only drawn if fog is None OR the tile is currently revealed
             if ("None".equals(selectedFog) || revealedTiles[q][r]) {
-                // Get the short ID from the address (e.g., "52674" from "...:52674")
-                String shortId = address.substring(address.lastIndexOf(':') + 1);
+                // Get the player's name using the PlayerRegistry
+                String playerName = PlayerRegistry.getPlayerName(address);
                 // Draw other players with a different color (Green)
-                drawPlayerToken(gc, pos[0], pos[1], Color.web("#00ff7f"), Color.web("#006400"), shortId);
+                drawPlayerToken(gc, pos[0], pos[1], Color.web("#00ff7f"), Color.web("#006400"), playerName);
             }
         });
     }
