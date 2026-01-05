@@ -34,7 +34,7 @@ public class HelloApplication extends Application {
         root.setPadding(new Insets(50, 20, 20, 20));
         root.setStyle("-fx-background-color: #000;");
 
-        Label title = new Label("Welcome to Williams D&D app!");
+        Label title = new Label("Welcome to My D&D app!");
         title.setFont(Font.font("Arial", FontWeight.BOLD, 36));
         title.setTextFill(Color.web("#ff0000"));
 
@@ -106,12 +106,12 @@ public class HelloApplication extends Application {
         homeScene.setOnKeyPressed(e -> {
             if (e.getCode() == KeyCode.F1) {
                 stage.setScene(homeScene);
-                stage.setTitle("Welcome to Williams D&D app!");
+                stage.setTitle("Welcome to My D&D app!");
             }
         });
 
         stage.setScene(homeScene);
-        stage.setTitle("Welcome to Williams D&D app!");
+        stage.setTitle("Welcome to My D&D app!");
         stage.show();
 
         // Connect the WebSocket service on application start
