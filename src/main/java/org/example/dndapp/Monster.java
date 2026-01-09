@@ -1,79 +1,78 @@
 package org.example.dndapp;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class Monster {
-    private String name;
-    private String type;
-    private String armorClass;
-    private String hitPoints;
-    private String speed;
-    private String stats;
-    private String senses;
-    private String languages;
-    private String challenge;
-    private String proficiencyBonus;
-    private String skills;
-    private String abilities;
+    private final String name;
+    private final String type;
+    private final String size;
+    private final String alignment;
+    private final String cr;
+    private final String source;
+    private final String page;
+    private final List<String> traits = new ArrayList<>();
+    private final List<String> environments = new ArrayList<>();
 
-    public Monster(String name, String type, String armorClass, String hitPoints, String speed, String stats, String senses, String languages, String challenge, String proficiencyBonus, String skills, String abilities) {
-        this.name = name;
-        this.type = type;
-        this.armorClass = armorClass;
-        this.hitPoints = hitPoints;
-        this.speed = speed;
-        this.stats = stats;
-        this.senses = senses;
-        this.languages = languages;
-        this.challenge = challenge;
-        this.proficiencyBonus = proficiencyBonus;
-        this.skills = skills;
-        this.abilities = abilities;
+    public Monster(String[] data) {
+        // Basic Info mapping based on your CSV structure
+        this.name = data[0].replace("\"", "").trim();
+        this.size = (data.length > 1 && !data[1].isEmpty()) ? data[1] : "Unknown";
+        this.type = (data.length > 2 && !data[2].isEmpty()) ? data[2] : "Unknown";
+        this.alignment = (data.length > 4 && !data[4].isEmpty()) ? data[4] : "Unknown";
+        this.cr = (data.length > 5 && !data[5].isEmpty()) ? data[5] : "-";
+        this.source = (data.length > 25) ? data[25] : "Unknown";
+        this.page = (data.length > 26) ? data[26] : "?";
+
+        // Traits (Col 7, 8, 9, 10, 11, 12)
+        if (isMarked(data, 7)) traits.add("Spellcaster");
+        if (isMarked(data, 8)) traits.add("Legendary");
+        if (isMarked(data, 9)) traits.add("Lair Actions");
+        if (isMarked(data, 10)) traits.add("Unique");
+        if (isMarked(data, 11)) traits.add("Familiar");
+        if (isMarked(data, 12)) traits.add("Template");
+
+        // Environments (Col 13 - 24)
+        String[] envNames = {
+                "Arctic", "Coastal", "Desert", "Forest", "Grassland",
+                "Hill", "Mountain", "Swamp", "Underdark", "Underwater", "Urban", "Other Plane"
+        };
+        for (int i = 0; i < envNames.length; i++) {
+            if (isMarked(data, 13 + i)) {
+                environments.add(envNames[i]);
+            }
+        }
     }
 
-    public String getName() {
-        return name;
+    private boolean isMarked(String[] data, int index) {
+        if (index >= data.length) return false;
+        String val = data[index].toLowerCase().trim();
+        return val.equals("x") || val.equals("ø") || val.equals("true");
     }
 
-    public String getType() {
-        return type;
-    }
+    // Getters needed by BestiaryPage
+    public String getName() { return name; }
+    public String getCr() { return cr; }
+    public String getType() { return type; }
+    public boolean isLegendary() { return traits.contains("Legendary"); }
 
-    public String getArmorClass() {
-        return armorClass;
-    }
+    public String getFormattedStats() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Size/Type: ").append(size).append(" ").append(type).append("\n");
+        sb.append("Alignment: ").append(alignment).append("\n");
+        sb.append("Challenge: ").append(cr).append("\n\n");
 
-    public String getHitPoints() {
-        return hitPoints;
-    }
+        if (!traits.isEmpty()) {
+            sb.append("Traits: ").append(String.join(", ", traits)).append("\n");
+        }
 
-    public String getSpeed() {
-        return speed;
-    }
+        if (!environments.isEmpty()) {
+            sb.append("Environments: ").append(String.join(", ", environments)).append("\n");
+        }
 
-    public String getStats() {
-        return stats;
-    }
+        sb.append("----------------------------------\n");
+        sb.append("Source: ").append(source).append(" (pg. ").append(page).append(")");
 
-    public String getSenses() {
-        return senses;
-    }
-
-    public String getLanguages() {
-        return languages;
-    }
-
-    public String getChallenge() {
-        return challenge;
-    }
-
-    public String getProficiencyBonus() {
-        return proficiencyBonus;
-    }
-
-    public String getSkills() {
-        return skills;
-    }
-
-    public String getAbilities() {
-        return abilities;
+        return sb.toString();
     }
 }

@@ -46,20 +46,17 @@ public class DMPage {
         Button mapCreatorBtn = new Button("Map Creator");
         Button myMapsBtn = new Button("My Maps");
         Button encountersBtn = new Button("Encounters");
-        Button playersBtn = new Button("Players");
 
         String buttonStyle = "-fx-padding: 10 20; -fx-font-size: 16px; -fx-cursor: hand; -fx-border-radius: 5px; -fx-background-color: #007BFF; -fx-text-fill: white;";
         mapCreatorBtn.setStyle(buttonStyle);
         myMapsBtn.setStyle(buttonStyle);
         encountersBtn.setStyle(buttonStyle);
-        playersBtn.setStyle(buttonStyle);
 
         // Define button actions
         mapCreatorBtn.setOnAction(e -> {
             MapCreatorPage mapCreatorPage = new MapCreatorPage(primaryStage, createScene());
             primaryStage.setScene(mapCreatorPage.createScene());
         });
-        playersBtn.setOnAction(e -> System.out.println("Players button clicked!"));
 
         // Navigation to MyMapsPage and EncountersPage
         myMapsBtn.setOnAction(e -> {
@@ -75,7 +72,6 @@ public class DMPage {
         buttonGrid.add(mapCreatorBtn, 0, 0);
         buttonGrid.add(myMapsBtn, 1, 0);
         buttonGrid.add(encountersBtn, 0, 1);
-        buttonGrid.add(playersBtn, 1, 1);
 
         mainContent.getChildren().addAll(title, buttonGrid);
 

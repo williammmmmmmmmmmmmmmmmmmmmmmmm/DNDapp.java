@@ -12,15 +12,23 @@ import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
+import java.util.List;
 
 public class EncountersPage {
+    private final Stage primaryStage;
+    private final DMPage dmPage;
 
-    private Stage primaryStage;
-    private DMPage dmPage; // Reference to the Dungeon Master page
+    // Load saved encounters from the file immediately
+    private static final List<Encounter> savedEncounters = EncounterStorage.loadEncounters();
 
     public EncountersPage(Stage primaryStage, DMPage dmPage) {
         this.primaryStage = primaryStage;
         this.dmPage = dmPage;
+    }
+
+    // Call this whenever the list is changed (Add or Delete)
+    public static void saveToDisk() {
+        EncounterStorage.saveEncounters(savedEncounters);
     }
 
     public Scene createScene() {
@@ -31,36 +39,35 @@ public class EncountersPage {
         mainContent.setPadding(new Insets(50, 20, 20, 20));
         mainContent.setAlignment(Pos.CENTER);
         mainContent.setStyle("-fx-background-color: #1a1a1a; -fx-background-radius: 10; -fx-border-color: #ff0000; -fx-border-width: 2; -fx-border-radius: 10;");
+        mainContent.setMaxWidth(800);
 
-        Label title = new Label("Encounters");
-        title.setFont(Font.font("Inter", FontWeight.BOLD, 36));
+        Label title = new Label("ENCOUNTERS");
+        title.setFont(Font.font("Inter", FontWeight.BOLD, 48));
         title.setTextFill(Color.web("#ff0000"));
 
         GridPane buttonGrid = new GridPane();
+        buttonGrid.setHgap(25);
+        buttonGrid.setVgap(25);
         buttonGrid.setAlignment(Pos.CENTER);
-        buttonGrid.setHgap(15);
-        buttonGrid.setVgap(15);
+
+        String blueStyle = "-fx-background-color: #007bff; -fx-text-fill: white; -fx-font-size: 18px; " +
+                "-fx-font-weight: bold; -fx-min-width: 250px; -fx-min-height: 120px; " +
+                "-fx-background-radius: 10; -fx-cursor: hand;";
 
         Button createBtn = new Button("Create New Encounter");
         Button myEncountersBtn = new Button("My Encounters");
-        Button randomEncounterBtn = new Button("Random Encounter");
-        Button bestiaryBtn = new Button("Bestiary");
+        Button randomEncounterBtn = new Button("Random Generator");
+        Button bestiaryBtn = new Button("Monster Bestiary");
 
-        String buttonStyle = "-fx-padding: 10 20; -fx-font-size: 16px; -fx-cursor: hand; -fx-border-radius: 5px; -fx-background-color: #007BFF; -fx-text-fill: white;";
-        createBtn.setStyle(buttonStyle);
-        myEncountersBtn.setStyle(buttonStyle);
-        randomEncounterBtn.setStyle(buttonStyle);
-        bestiaryBtn.setStyle(buttonStyle);
+        createBtn.setStyle(blueStyle);
+        myEncountersBtn.setStyle(blueStyle);
+        randomEncounterBtn.setStyle(blueStyle);
+        bestiaryBtn.setStyle(blueStyle);
 
-        createBtn.setOnAction(e -> System.out.println("Create New Encounter button clicked!"));
-        myEncountersBtn.setOnAction(e -> System.out.println("My Encounters button clicked!"));
-        randomEncounterBtn.setOnAction(e -> System.out.println("Random Encounter button clicked!"));
-
-        // Navigation to BestiaryPage
-        bestiaryBtn.setOnAction(e -> {
-            BestiaryPage bestiaryPage = new BestiaryPage(primaryStage, primaryStage.getScene());
-            primaryStage.setScene(bestiaryPage.createScene());
-        });
+        createBtn.setOnAction(e -> primaryStage.setScene(new CreateEncounterPage(primaryStage, createScene(), savedEncounters).createScene()));
+        myEncountersBtn.setOnAction(e -> primaryStage.setScene(new MyEncountersPage(primaryStage, createScene(), savedEncounters).createScene()));
+        randomEncounterBtn.setOnAction(e -> primaryStage.setScene(new RandomEncounterPage(primaryStage, createScene(), savedEncounters).createScene()));
+        bestiaryBtn.setOnAction(e -> primaryStage.setScene(new BestiaryPage(primaryStage, createScene()).createScene()));
 
         buttonGrid.add(createBtn, 0, 0);
         buttonGrid.add(myEncountersBtn, 1, 0);
@@ -69,14 +76,14 @@ public class EncountersPage {
 
         mainContent.getChildren().addAll(title, buttonGrid);
 
-        Button backButton = new Button("Go Back");
-        backButton.setStyle("-fx-background-color: #28a745; -fx-text-fill: white; -fx-font-weight: bold; -fx-border-radius: 20; -fx-padding: 5 15;");
-        backButton.setOnAction(e -> primaryStage.setScene(dmPage.createScene()));
-        StackPane.setAlignment(backButton, Pos.TOP_LEFT);
-        StackPane.setMargin(backButton, new Insets(15));
+        Button backBtn = new Button("Go Back");
+        backBtn.setStyle("-fx-background-color: #28a745; -fx-text-fill: white; -fx-font-weight: bold; -fx-border-radius: 20; -fx-padding: 5 15;");
+        backBtn.setOnAction(e -> primaryStage.setScene(dmPage.createScene()));
 
-        root.getChildren().addAll(mainContent, backButton);
+        StackPane.setAlignment(backBtn, Pos.TOP_LEFT);
+        StackPane.setMargin(backBtn, new Insets(15));
 
-        return new Scene(root);
+        root.getChildren().addAll(mainContent, backBtn);
+        return new Scene(root, 1000, 800);
     }
 }

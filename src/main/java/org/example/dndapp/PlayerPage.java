@@ -68,6 +68,11 @@ public class PlayerPage {
             primaryStage.setScene(myCharactersPage.createScene());
             primaryStage.setTitle("My Characters");
         });
+        spellGuideButton.setOnAction(e -> {
+            SpellGuidePage spellGuidePage = new SpellGuidePage(primaryStage, createScene());
+            primaryStage.setScene(spellGuidePage.createScene());
+            primaryStage.setTitle("Spell Guide");
+        });
 
         backButton.setOnAction(e -> primaryStage.setScene(homeScene));
 
