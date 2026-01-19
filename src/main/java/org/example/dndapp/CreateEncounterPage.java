@@ -4,6 +4,7 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.input.MouseButton;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
@@ -27,6 +28,15 @@ public class CreateEncounterPage {
         this.dataLoader = new BestiaryPage(stage, prev);
     }
 
+    private void addMonsterToCart(Monster m) {
+        if (m != null) {
+            currentEncounter.addMonster(m);
+            Label l = new Label("• " + m.getName() + " (CR " + m.getCr() + ")");
+            l.setTextFill(Color.WHITE);
+            cartBox.getChildren().add(l);
+        }
+    }
+
     public Scene createScene() {
         StackPane root = new StackPane();
         root.setStyle("-fx-background-color: #000;");
@@ -42,13 +52,11 @@ public class CreateEncounterPage {
         title.setFont(Font.font("Inter", FontWeight.BOLD, 36));
         title.setTextFill(Color.web("#ff0000"));
 
-        // Button style copied exactly from DMPage
         String blueButtonStyle = "-fx-padding: 10 20; -fx-font-size: 16px; -fx-cursor: hand; -fx-border-radius: 5px; -fx-background-color: #007BFF; -fx-text-fill: white;";
 
         HBox split = new HBox(30);
         split.setAlignment(Pos.CENTER);
 
-        // Left Side: Search & Results
         VBox left = new VBox(10);
         left.setPrefWidth(400);
 
@@ -60,7 +68,6 @@ public class CreateEncounterPage {
         results.setPrefHeight(350);
         results.setStyle("-fx-control-inner-background: #111; -fx-text-fill: white;");
 
-        // FIX: This CellFactory ensures the NAME shows up, not the object ID
         results.setCellFactory(lv -> new ListCell<Monster>() {
             @Override
             protected void updateItem(Monster item, boolean empty) {
@@ -73,6 +80,13 @@ public class CreateEncounterPage {
             }
         });
 
+        // DOUBLE CLICK LOGIC
+        results.setOnMouseClicked(event -> {
+            if (event.getButton().equals(MouseButton.PRIMARY) && event.getClickCount() == 2) {
+                addMonsterToCart(results.getSelectionModel().getSelectedItem());
+            }
+        });
+
         search.setOnKeyReleased(e -> {
             String f = search.getText().toLowerCase();
             results.getItems().clear();
@@ -82,20 +96,12 @@ public class CreateEncounterPage {
         });
 
         Button addBtn = new Button("Add to Encounter");
-        addBtn.setStyle(blueButtonStyle); // Blue style from DMPage
+        addBtn.setStyle(blueButtonStyle);
         addBtn.setMaxWidth(Double.MAX_VALUE);
-        addBtn.setOnAction(e -> {
-            Monster m = results.getSelectionModel().getSelectedItem();
-            if (m != null) {
-                currentEncounter.addMonster(m);
-                Label l = new Label("• " + m.getName() + " (CR " + m.getCr() + ")");
-                l.setTextFill(Color.WHITE);
-                cartBox.getChildren().add(l);
-            }
-        });
+        addBtn.setOnAction(e -> addMonsterToCart(results.getSelectionModel().getSelectedItem()));
+
         left.getChildren().addAll(new Label("Search Bestiary:"), search, results, addBtn);
 
-        // Right Side: Cart & Save
         VBox right = new VBox(10);
         right.setPrefWidth(300);
 
@@ -114,7 +120,8 @@ public class CreateEncounterPage {
         saveBtn.setOnAction(e -> {
             currentEncounter.setName(nameField.getText());
             savedList.add(currentEncounter);
-            stage.setScene(prev);
+            EncountersPage.saveToDisk(); // FIX: Actually save to the .dat file
+            AppController.goTo(prev);
         });
 
         right.getChildren().addAll(new Label("Encounter Name:"), nameField, new Label("Added Monsters:"), scroll, saveBtn);
@@ -122,10 +129,9 @@ public class CreateEncounterPage {
         split.getChildren().addAll(left, right);
         mainContent.getChildren().addAll(title, split);
 
-        // Green Back Button in Top Left (Exact style from DMPage)
         Button backButton = new Button("Go Back");
         backButton.setStyle("-fx-background-color: #28a745; -fx-text-fill: white; -fx-font-weight: bold; -fx-border-radius: 20; -fx-padding: 5 15;");
-        backButton.setOnAction(e -> stage.setScene(prev));
+        backButton.setOnAction(e -> AppController.goTo(prev));
 
         StackPane.setAlignment(backButton, Pos.TOP_LEFT);
         StackPane.setMargin(backButton, new Insets(15));

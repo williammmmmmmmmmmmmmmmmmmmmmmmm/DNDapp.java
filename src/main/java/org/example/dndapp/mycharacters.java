@@ -41,7 +41,7 @@ public class mycharacters {
         characterGrid.setVgap(15);
 
         // Placeholder for characters
-        backButton.setOnAction(e -> primaryStage.setScene(previousScene));
+        backButton.setOnAction(e -> AppController.goTo(previousScene));
         Label placeholderLabel = new Label("Finish this: Display list of characters here");
         placeholderLabel.setTextFill(Color.web("#fff"));
         characterGrid.add(placeholderLabel, 0, 0);

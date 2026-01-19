@@ -64,10 +64,10 @@ public class EncountersPage {
         randomEncounterBtn.setStyle(blueStyle);
         bestiaryBtn.setStyle(blueStyle);
 
-        createBtn.setOnAction(e -> primaryStage.setScene(new CreateEncounterPage(primaryStage, createScene(), savedEncounters).createScene()));
-        myEncountersBtn.setOnAction(e -> primaryStage.setScene(new MyEncountersPage(primaryStage, createScene(), savedEncounters).createScene()));
-        randomEncounterBtn.setOnAction(e -> primaryStage.setScene(new RandomEncounterPage(primaryStage, createScene(), savedEncounters).createScene()));
-        bestiaryBtn.setOnAction(e -> primaryStage.setScene(new BestiaryPage(primaryStage, createScene()).createScene()));
+        createBtn.setOnAction(e -> AppController.goTo(new CreateEncounterPage(primaryStage, createScene(), savedEncounters).createScene()));
+        myEncountersBtn.setOnAction(e -> AppController.goTo(new MyEncountersPage(primaryStage, createScene(), savedEncounters).createScene()));
+        randomEncounterBtn.setOnAction(e -> AppController.goTo(new RandomEncounterPage(primaryStage, createScene(), savedEncounters).createScene()));
+        bestiaryBtn.setOnAction(e -> AppController.goTo(new BestiaryPage(primaryStage, createScene()).createScene()));
 
         buttonGrid.add(createBtn, 0, 0);
         buttonGrid.add(myEncountersBtn, 1, 0);
@@ -78,7 +78,7 @@ public class EncountersPage {
 
         Button backBtn = new Button("Go Back");
         backBtn.setStyle("-fx-background-color: #28a745; -fx-text-fill: white; -fx-font-weight: bold; -fx-border-radius: 20; -fx-padding: 5 15;");
-        backBtn.setOnAction(e -> primaryStage.setScene(dmPage.createScene()));
+        backBtn.setOnAction(e -> AppController.goTo(dmPage.createScene()));
 
         StackPane.setAlignment(backBtn, Pos.TOP_LEFT);
         StackPane.setMargin(backBtn, new Insets(15));

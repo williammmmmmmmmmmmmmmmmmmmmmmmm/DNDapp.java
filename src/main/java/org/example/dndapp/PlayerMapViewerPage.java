@@ -126,7 +126,7 @@ public class PlayerMapViewerPage {
             // Restore the previous handler (CampaignsPage::handleMessage)
             webSocketService.setOnMessageReceived(previousMessageHandler);
         }
-        primaryStage.setScene(mapsScene);
+        AppController.goTo(mapsScene);
     }
 
     /**

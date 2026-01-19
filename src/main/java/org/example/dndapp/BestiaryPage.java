@@ -76,7 +76,7 @@ public class BestiaryPage {
 
         Button backBtn = new Button("Back to Encounters");
         backBtn.setStyle("-fx-background-color: " + ACCENT_RED + "; -fx-text-fill: white; -fx-cursor: hand; -fx-padding: 10 30; -fx-font-weight: bold; -fx-background-radius: 20;");
-        backBtn.setOnAction(e -> primaryStage.setScene(previousScene));
+        backBtn.setOnAction(e -> AppController.goTo(previousScene));
 
         root.getChildren().addAll(title, searchField, scrollPane, backBtn);
         updateList("");

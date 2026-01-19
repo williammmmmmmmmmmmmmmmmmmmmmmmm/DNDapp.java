@@ -132,7 +132,7 @@ public class CharacterCreationPage {
 
         Button backButton = new Button("Go Back");
         backButton.setStyle(buttonStyle);
-        backButton.setOnAction(e -> primaryStage.setScene(previousScene));
+        backButton.setOnAction(e -> AppController.goTo(previousScene));
 
         root.getChildren().addAll(title, nameGrid, classTitle, classGrid, backButton);
     }
@@ -613,7 +613,7 @@ public class CharacterCreationPage {
 
         viewSheetButton.setOnAction(e -> {
             CharacterSheetPage sheetPage = new CharacterSheetPage(newCharacter, primaryStage, new MyCharactersPage(primaryStage, null).createScene());
-            primaryStage.setScene(sheetPage.createScene());
+            AppController.goTo(sheetPage.createScene());
             primaryStage.setTitle(newCharacter.getName() + " Character Sheet");
         });
 
@@ -624,7 +624,7 @@ public class CharacterCreationPage {
 
         Button backToMenuButton = new Button("Back to Main Menu");
         backToMenuButton.setStyle(buttonStyle);
-        backToMenuButton.setOnAction(e -> primaryStage.setScene(previousScene));
+        backToMenuButton.setOnAction(e -> AppController.goTo(previousScene));
 
         root.getChildren().addAll(title, subtitle, viewSheetButton, createPdfButton, backToMenuButton);
     }

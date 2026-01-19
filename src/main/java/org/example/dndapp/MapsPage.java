@@ -61,7 +61,7 @@ public class MapsPage {
 
         Button backButton = new Button("Go Back");
         backButton.setStyle("-fx-padding: 10 20; -fx-font-size: 16px; -fx-cursor: hand; -fx-border-radius: 5px; -fx-background-color: #007BFF; -fx-text-fill: white;");
-        backButton.setOnAction(e -> primaryStage.setScene(playerScene));
+        backButton.setOnAction(e -> AppController.goTo(playerScene));
 
         Button downloadMapButton = new Button("Download Map");
         downloadMapButton.setStyle("-fx-padding: 10 20; -fx-font-size: 16px; -fx-cursor: hand; -fx-border-radius: 5px; -fx-background-color: #28a745; -fx-text-fill: white;");
@@ -200,7 +200,7 @@ public class MapsPage {
                         campaignsPage.getCurrentRoom(),
                         campaignsPage.getMessageHandler()
                 );
-                primaryStage.setScene(viewerPage.createScene());
+                AppController.goTo(viewerPage.createScene());
                 primaryStage.setTitle("Map Viewer");
             });
         }

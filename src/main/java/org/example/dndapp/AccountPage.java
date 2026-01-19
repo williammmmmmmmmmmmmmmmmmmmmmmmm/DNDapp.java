@@ -53,7 +53,7 @@ public class AccountPage {
 
                 System.out.println("Account name saved: " + PlayerSession.getPlayerName());
 
-                primaryStage.setScene(homeScene);
+                AppController.goTo(homeScene);
                 primaryStage.setTitle("Williams D&D App");
             } else {
                 nameField.setPromptText("Name cannot be empty!");
@@ -63,7 +63,7 @@ public class AccountPage {
 
         Button backButton = new Button("Go Back");
         backButton.setStyle("-fx-padding: 10 20; -fx-font-size: 16px; -fx-cursor: hand; -fx-border-radius: 5px; -fx-background-color: #007BFF; -fx-text-fill: white;");
-        backButton.setOnAction(e -> primaryStage.setScene(homeScene));
+        backButton.setOnAction(e -> AppController.goTo(homeScene));
 
         root.getChildren().addAll(title, nameLabel, nameField, saveButton, backButton);
 

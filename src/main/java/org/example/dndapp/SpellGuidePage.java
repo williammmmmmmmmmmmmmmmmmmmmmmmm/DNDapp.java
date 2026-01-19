@@ -99,7 +99,7 @@ public class SpellGuidePage {
 
         Button backButton = new Button("Back");
         backButton.setStyle("-fx-background-color: " + ACCENT_BLUE + "; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 10 30; -fx-cursor: hand;");
-        backButton.setOnAction(e -> primaryStage.setScene(previousScene));
+        backButton.setOnAction(e -> AppController.goTo(previousScene));
 
         root.getChildren().addAll(title, classLabel, classComboBox, levelLabel, levelComboBox, scrollPane, backButton);
 

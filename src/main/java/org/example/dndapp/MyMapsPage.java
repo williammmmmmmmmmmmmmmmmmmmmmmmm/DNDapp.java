@@ -56,7 +56,7 @@ public class MyMapsPage {
 
         Button backButton = new Button("Go Back");
         backButton.setStyle("-fx-padding: 10 20; -fx-font-size: 16px; -fx-cursor: hand; -fx-border-radius: 5px; -fx-background-color: #007BFF; -fx-text-fill: white;");
-        backButton.setOnAction(e -> primaryStage.setScene(previousScene));
+        backButton.setOnAction(e -> AppController.goTo(previousScene));
 
         GridPane mapGrid = new GridPane();
         mapGrid.setHgap(20);

@@ -55,18 +55,18 @@ public class DMPage {
         // Define button actions
         mapCreatorBtn.setOnAction(e -> {
             MapCreatorPage mapCreatorPage = new MapCreatorPage(primaryStage, createScene());
-            primaryStage.setScene(mapCreatorPage.createScene());
+            AppController.goTo(mapCreatorPage.createScene());
         });
 
         // Navigation to MyMapsPage and EncountersPage
         myMapsBtn.setOnAction(e -> {
             MyMapsPage myMapsPage = new MyMapsPage(primaryStage, createScene(), webSocketService); // Corrected arguments
-            primaryStage.setScene(myMapsPage.createScene());
+            AppController.goTo(myMapsPage.createScene());
         });
 
         encountersBtn.setOnAction(e -> {
             EncountersPage encountersPage = new EncountersPage(primaryStage, this);
-            primaryStage.setScene(encountersPage.createScene());
+            AppController.goTo(encountersPage.createScene());
         });
 
         buttonGrid.add(mapCreatorBtn, 0, 0);
@@ -77,7 +77,7 @@ public class DMPage {
 
         Button backButton = new Button("Go Back");
         backButton.setStyle("-fx-background-color: #28a745; -fx-text-fill: white; -fx-font-weight: bold; -fx-border-radius: 20; -fx-padding: 5 15;");
-        backButton.setOnAction(e -> primaryStage.setScene(homeScene));
+        backButton.setOnAction(e -> AppController.goTo(homeScene));
         StackPane.setAlignment(backButton, Pos.TOP_LEFT);
         StackPane.setMargin(backButton, new Insets(15));
 

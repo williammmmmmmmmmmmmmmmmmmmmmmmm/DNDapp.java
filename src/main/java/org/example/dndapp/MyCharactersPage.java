@@ -42,7 +42,7 @@ public class MyCharactersPage {
         Button backButton = new Button("Go Back");
         String backButtonStyle = "-fx-padding: 10 20; -fx-font-size: 16px; -fx-cursor: hand; -fx-border-radius: 5px; -fx-background-color: #007BFF; -fx-text-fill: white;";
         backButton.setStyle(backButtonStyle);
-        backButton.setOnAction(e -> primaryStage.setScene(previousScene));
+        backButton.setOnAction(e -> AppController.goTo(previousScene));
 
         List<String> characterNames = CharacterFileManager.getSavedCharacters();
         if (characterNames.isEmpty()) {
@@ -59,7 +59,7 @@ public class MyCharactersPage {
                     Character character = CharacterFileManager.loadCharacter(characterName);
                     if (character != null) {
                         CharacterSheetPage characterSheetPage = new CharacterSheetPage(character, primaryStage, createScene());
-                        primaryStage.setScene(characterSheetPage.createScene());
+                        AppController.goTo(characterSheetPage.createScene());
                         primaryStage.setTitle("Character Sheet - " + character.getName());
                     } else {
                         Alert alert = new Alert(Alert.AlertType.ERROR);
@@ -78,7 +78,7 @@ public class MyCharactersPage {
         createCharacterButton.setStyle(createButtonStyle);
         createCharacterButton.setOnAction(e -> {
             CharacterCreationPage characterCreationPage = new CharacterCreationPage(primaryStage, createScene());
-            primaryStage.setScene(characterCreationPage.createScene());
+            AppController.goTo(characterCreationPage.createScene());
             primaryStage.setTitle("Character Creation");
         });
 

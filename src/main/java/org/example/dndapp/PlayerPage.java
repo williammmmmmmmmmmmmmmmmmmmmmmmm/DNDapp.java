@@ -59,22 +59,22 @@ public class PlayerPage {
         mapsButton.setOnAction(e -> {
             // FIX: MapsPage now needs 4 arguments
             MapsPage mapsPage = new MapsPage(primaryStage, createScene(), webSocketService, campaignsPage);
-            primaryStage.setScene(mapsPage.createScene());
+            AppController.goTo(mapsPage.createScene());
             primaryStage.setTitle("Maps");
         });
 
         myCharactersButton.setOnAction(e -> {
             MyCharactersPage myCharactersPage = new MyCharactersPage(primaryStage, createScene());
-            primaryStage.setScene(myCharactersPage.createScene());
+            AppController.goTo(myCharactersPage.createScene());
             primaryStage.setTitle("My Characters");
         });
         spellGuideButton.setOnAction(e -> {
             SpellGuidePage spellGuidePage = new SpellGuidePage(primaryStage, createScene());
-            primaryStage.setScene(spellGuidePage.createScene());
+            AppController.goTo(spellGuidePage.createScene());
             primaryStage.setTitle("Spell Guide");
         });
 
-        backButton.setOnAction(e -> primaryStage.setScene(homeScene));
+        backButton.setOnAction(e -> AppController.goTo(homeScene));
 
         buttonGrid.add(myCharactersButton, 0, 0);
         buttonGrid.add(mapsButton, 1, 0);
@@ -88,7 +88,7 @@ public class PlayerPage {
         root.getChildren().add(content);
 
         //Button BackButton = new Button("Go Back");
-        //BackButton.setOnAction(e -> primaryStage.setScene(homeScene));
+        //BackButton.setOnAction(e -> AppController.goTo(homeScene));
         //StackPane.setAlignment(BackButton, Pos.TOP_LEFT);
         //StackPane.setMargin(BackButton, new Insets(15));
 

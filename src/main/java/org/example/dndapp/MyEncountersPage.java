@@ -47,7 +47,7 @@ public class MyEncountersPage {
 
         Button backBtn = new Button("Go Back");
         backBtn.setStyle("-fx-background-color: #28a745; -fx-text-fill: white; -fx-font-weight: bold; -fx-border-radius: 20; -fx-padding: 5 15;");
-        backBtn.setOnAction(e -> stage.setScene(prev));
+        backBtn.setOnAction(e -> AppController.goTo(prev));
 
         StackPane.setAlignment(backBtn, Pos.TOP_LEFT);
         StackPane.setMargin(backBtn, new Insets(15));

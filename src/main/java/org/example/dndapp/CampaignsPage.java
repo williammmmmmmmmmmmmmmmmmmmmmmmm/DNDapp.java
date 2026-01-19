@@ -140,7 +140,7 @@ public class CampaignsPage {
 
         Button backButton = new Button("Go Back");
         backButton.setStyle("-fx-background-color: #ff0000; -fx-text-fill: white; -fx-font-weight: bold; -fx-border-radius: 20; -fx-padding: 5 15;");
-        backButton.setOnAction(e -> primaryStage.setScene(homeScene));
+        backButton.setOnAction(e -> AppController.goTo(homeScene));
         StackPane.setAlignment(backButton, Pos.TOP_LEFT);
         StackPane.setMargin(backButton, new Insets(15));
 

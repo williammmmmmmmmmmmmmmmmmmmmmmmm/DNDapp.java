@@ -66,7 +66,7 @@ public class MapCreatorPage extends Application {
     public void start(Stage stage) {
         this.primaryStage = stage;
         Scene scene = createScene();
-        primaryStage.setScene(scene);
+        AppController.goTo(scene);
         primaryStage.setTitle("Map Creator");
         primaryStage.show();
     }
@@ -77,7 +77,7 @@ public class MapCreatorPage extends Application {
 
         Button backButton = new Button("Go Back");
         backButton.setStyle("-fx-background-color: #28a745; -fx-text-fill: white; -fx-font-weight: bold; -fx-border-radius: 20; -fx-padding: 5 15;");
-        backButton.setOnAction(e -> primaryStage.setScene(previousScene));
+        backButton.setOnAction(e -> AppController.goTo(previousScene));
         StackPane.setAlignment(backButton, Pos.TOP_LEFT);
         StackPane.setMargin(backButton, new Insets(15));
 

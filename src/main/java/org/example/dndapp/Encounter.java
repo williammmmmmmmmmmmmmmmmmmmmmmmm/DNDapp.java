@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Encounter implements Serializable {
+    private static final long serialVersionUID = 1L; // Ensures version consistency
     private String name;
     private List<Monster> monsters;
 
@@ -22,17 +23,16 @@ public class Encounter implements Serializable {
     }
 
     private String calculateTotalCR() {
-        // Simple CR summation logic
         double total = 0;
         for (Monster m : monsters) {
             try {
-                String crStr = m.getCr().split("/")[0]; // Handles 1/2, 1/4
+                String crStr = m.getCr().split("/")[0];
                 if (m.getCr().contains("/")) {
                     total += 1.0 / Double.parseDouble(m.getCr().split("/")[1]);
                 } else {
                     total += Double.parseDouble(crStr);
                 }
-            } catch (Exception e) { /* Ignore non-numeric CR */ }
+            } catch (Exception e) { }
         }
         return String.valueOf(total);
     }

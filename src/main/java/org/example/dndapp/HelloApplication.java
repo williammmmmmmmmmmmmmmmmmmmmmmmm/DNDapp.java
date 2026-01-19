@@ -7,7 +7,6 @@ import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.input.KeyCode;
-import javafx.scene.input.KeyCodeCombination;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
@@ -26,15 +25,17 @@ public class HelloApplication extends Application {
 
     @Override
     public void start(Stage stage) {
-        // Set the window to be maximized instead of fullscreen
-        stage.setMaximized(true);
+        // Initialize the controller to manage window states
+        AppController.initialize(stage);
 
         VBox root = new VBox(20);
         root.setAlignment(Pos.CENTER);
         root.setPadding(new Insets(50, 20, 20, 20));
         root.setStyle("-fx-background-color: #000;");
 
-        Label title = new Label("Welcome to My D&D app!");
+        Label title = new Label("""
+                Welcome to William's Triple M:
+                  Maps, Magic, and Monsters!""");
         title.setFont(Font.font("Arial", FontWeight.BOLD, 36));
         title.setTextFill(Color.web("#ff0000"));
 
@@ -56,41 +57,37 @@ public class HelloApplication extends Application {
 
         homeScene = new Scene(root, 1000, 800);
 
-        // --- DEPENDENCY INITIALIZATION AND FIXES ---
-        // CampaignsPage and its Scene must be initialized first because it is a dependency for PlayerPage and MapsPage
+        // Dependency Initialization
         CampaignsPage campaignsPage = new CampaignsPage(stage, homeScene, webSocketService);
         campaignsScene = campaignsPage.createScene();
 
-        // Uncommented and re-instantiated
-        // DMPage and AccountPage instantiation assumed to be present for compilation
         DMPage dmPage = new DMPage(stage, homeScene);
         dmScene = dmPage.createScene();
 
         AccountPage accountPage = new AccountPage(stage, homeScene);
         accountScene = accountPage.createScene();
 
-        // FIX: PlayerPage now requires WebSocketService and CampaignsPage
         PlayerPage playerPage = new PlayerPage(stage, homeScene, webSocketService, campaignsPage);
         playerScene = playerPage.createScene();
-        // --- END DEPENDENCY INITIALIZATION AND FIXES ---
 
+        // Use AppController.goTo for all navigation
         campaignsButton.setOnAction(e -> {
-            stage.setScene(campaignsScene);
+            AppController.goTo(campaignsScene);
             stage.setTitle("Campaigns");
         });
 
         dmButton.setOnAction(e -> {
-            stage.setScene(dmScene);
+            AppController.goTo(dmScene);
             stage.setTitle("Dungeon Master");
         });
 
         accountButton.setOnAction(e -> {
-            stage.setScene(accountScene);
+            AppController.goTo(accountScene);
             stage.setTitle("Account Page");
         });
 
         playerButton.setOnAction(e -> {
-            stage.setScene(playerScene);
+            AppController.goTo(playerScene);
             stage.setTitle("Player Tools");
         });
 
@@ -101,23 +98,20 @@ public class HelloApplication extends Application {
 
         root.getChildren().addAll(title, buttonGrid);
 
-        // Global Key Bindings for easy navigation
-        // F1: Home (escape all views)
+        // Global Key Binding for Home
         homeScene.setOnKeyPressed(e -> {
             if (e.getCode() == KeyCode.F1) {
-                stage.setScene(homeScene);
+                AppController.goTo(homeScene);
                 stage.setTitle("Welcome to My D&D app!");
             }
         });
 
-        stage.setScene(homeScene);
+        AppController.goTo(homeScene);
         stage.setTitle("Welcome to My D&D app!");
+        stage.setMaximized(true); // Start maximized
         stage.show();
 
-        // Connect the WebSocket service on application start
         webSocketService.connect();
-
-        // Clean up WebSocket connection when the stage is closed
         stage.setOnCloseRequest(event -> webSocketService.disconnect());
     }
 

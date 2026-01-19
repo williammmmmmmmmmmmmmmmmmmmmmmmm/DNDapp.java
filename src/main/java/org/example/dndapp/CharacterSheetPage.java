@@ -139,7 +139,7 @@ public class CharacterSheetPage {
         Button backButton = new Button("Back to My Characters");
         // APPLY BLUE THEME TO BUTTON
         backButton.setStyle("-fx-padding: 10 20; -fx-font-size: 16px; -fx-cursor: hand; -fx-border-radius: 5px; -fx-background-color: " + ACCENT_BLUE + "; -fx-text-fill: white; -fx-font-weight: bold;");
-        backButton.setOnAction(e -> primaryStage.setScene(previousScene));
+        backButton.setOnAction(e -> AppController.goTo(previousScene));
         backButton.setPrefWidth(250);
 
         HBox buttonBox = new HBox(backButton);
